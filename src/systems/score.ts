@@ -17,11 +17,10 @@ export default class ScoreManager {
 
   updateScore(delta: number): void {
     this.score += delta;
-    // delta 표시 애니메이션 시작
     this.deltaDisplay = {
       value: delta,
       startTime: Date.now(),
-      duration: 500, // 0.5초
+      duration: 500,
     };
   }
 
@@ -46,7 +45,6 @@ export default class ScoreManager {
       return null;
     }
 
-    // 페이드아웃: 1에서 0으로
     const opacity = 1 - progress;
 
     return {
