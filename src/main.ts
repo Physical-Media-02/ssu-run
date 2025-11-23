@@ -1,6 +1,7 @@
 import p5 from "p5";
 
 import ScoreManager from "./systems/score";
+import HealthManager from "./systems/health_manager";
 import drawScoreUI from "./systems/score_ui";
 import { Player } from "./systems/player";
 import { Obstacle } from "./systems/obstacle";
@@ -13,13 +14,21 @@ import { World } from "./systems/world";
 import { level1 } from "./level";
 
 const scoreManager = new ScoreManager();
+const healthManager = new HealthManager(100); // Max health 100
+
 document.getElementById("reset-button")?.addEventListener("click", () => {
   scoreManager.resetScore();
-  // We would also need to reset the game state here
+  healthManager.resetHealth();
+  // We would also need to reset the game state here, which p.setup() will handle
 });
 document.getElementById("add-button")?.addEventListener("click", () => {
   scoreManager.updateScore(Math.floor(Math.random() * 11) + 10);
 });
+// Test button for taking damage
+document.getElementById("damage-button")?.addEventListener("click", () => {
+  healthManager.takeDamage(10);
+});
+
 
 const sketch = (p: p5) => {
   let player: Player;
@@ -38,15 +47,61 @@ const sketch = (p: p5) => {
   let lastScoreTime = 0;
   const scoreInterval = 1000; // 1 second
 
-  p.setup = () => {
-    p.createCanvas(800, 600);
+  function resetGame() {
     player = new Player(p);
     obstacleManager = new ObstacleManager(p);
     powerUpManager = new PowerUpManager(p);
     platformManager = new PlatformManager(p);
     world = new World();
+    
+    // Reset level progress
+    nextPlatformIndex = 0;
+    nextObstacleIndex = 0;
+    nextPowerUpIndex = 0;
+    
+    // Reset managers
+    scoreManager.resetScore();
+    healthManager.resetHealth();
+
     lastScoreTime = p.millis();
+    gameStatus = "playing";
+  }
+
+  p.setup = () => {
+    p.createCanvas(800, 600);
+    resetGame();
+
+    // Re-attach the reset button listener to call resetGame
+    document.getElementById("reset-button")!.onclick = () => {
+        resetGame();
+    };
   };
+
+  function drawHealthBar() {
+    const health = healthManager.getCurrentHealth();
+    const maxHealth = healthManager.getMaxHealth();
+    const healthBarWidth = (health / maxHealth) * 200; // Health bar max width 200px
+
+    p.push();
+    p.stroke(0);
+    p.strokeWeight(2);
+    
+    // Health bar background
+    p.fill(100);
+    p.rect(20, 20, 200, 20);
+
+    // Current health
+    p.fill(255, 0, 0); // Red
+    p.rect(20, 20, healthBarWidth, 20);
+    
+    // Health text
+    p.noStroke();
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(14);
+    p.text(`${health} / ${maxHealth}`, 120, 30);
+    p.pop();
+  }
 
   p.draw = () => {
     // --- GAME STATE CHECKS ---
@@ -118,7 +173,8 @@ const sketch = (p: p5) => {
           scoreManager.updateScore(100);
           obstacleManager.obstacles.splice(i, 1);
         } else {
-          gameStatus = "lost"; // Game over on collision
+          healthManager.takeDamage(25); // Take 25 damage from obstacle
+          obstacleManager.obstacles.splice(i, 1); // Remove obstacle after collision
         }
       } else if (obstacle.isOffscreen()) {
         obstacleManager.obstacles.splice(i, 1);
@@ -147,13 +203,17 @@ const sketch = (p: p5) => {
     powerUpManager.draw();
     platformManager.draw();
     drawScoreUI(p, scoreManager);
+    drawHealthBar();
 
     // --- STATE CHECKS ---
     if (world.worldX >= level1.length) {
       gameStatus = "won";
     }
-    if (player.isDead()) {
+    if (player.isDead()) { // Player falls off screen
       gameStatus = "lost";
+    }
+    if (healthManager.isDead()) { // Player runs out of health
+        gameStatus = "lost";
     }
   };
 
