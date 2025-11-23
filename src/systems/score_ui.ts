@@ -28,7 +28,7 @@ export default function drawScoreUI(p: p5, scoreManager: ScoreManager) {
     p.fill(255, 215, 0, alpha);
     p.stroke(0, alpha);
     p.strokeWeight(3);
-    p.text(text, centerX, centerY);
+p.text(text, centerX, centerY - 100);
     p.pop();
   }
 }

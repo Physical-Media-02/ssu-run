@@ -3,134 +3,224 @@ import p5 from "p5";
 import ScoreManager from "./systems/score";
 import HealthManager from "./systems/health_manager";
 import drawScoreUI from "./systems/score_ui";
+import { Player } from "./systems/player";
+import { Obstacle } from "./systems/obstacle";
+import { ObstacleManager } from "./systems/obstacle_manager";
+import { PowerUp } from "./systems/power_up";
+import { PowerUpManager } from "./systems/power_up_manager";
+import { Platform } from "./systems/platform";
+import { PlatformManager } from "./systems/platform_manager";
+import { World } from "./systems/world";
+import { level1 } from "./level";
 
 const scoreManager = new ScoreManager();
-const healthManager = new HealthManager(100); // 최대 체력 100으로 설정
+const healthManager = new HealthManager(100); // Max health 100
 
 document.getElementById("reset-button")?.addEventListener("click", () => {
   scoreManager.resetScore();
   healthManager.resetHealth();
+  // We would also need to reset the game state here, which p.setup() will handle
 });
 document.getElementById("add-button")?.addEventListener("click", () => {
   scoreManager.updateScore(Math.floor(Math.random() * 11) + 10);
 });
-// 테스트를 위해 데미지를 받는 버튼 이벤트 리스너 추가 (HTML에 damage-button이 있다고 가정)
+// Test button for taking damage
 document.getElementById("damage-button")?.addEventListener("click", () => {
   healthManager.takeDamage(10);
 });
 
-// --- 아래 클래스들은 보통 별도의 파일로 분리하여 관리합니다. (예: src/objects/Player.ts) ---
-
-class Player {
-  x: number = 50;
-  y: number = 550;
-  width: number = 20;
-  height: number = 20;
-
-  update(p: p5) {
-    this.x = p.mouseX; // 마우스 따라 이동
-  }
-
-  draw(p: p5) {
-    p.fill(0, 0, 255); // 파란색
-    p.rect(this.x, this.y, this.width, this.height);
-  }
-}
-
-class Obstacle {
-  x: number = 300;
-  y: number = 550;
-  width: number = 20;
-  height: number = 20;
-  damage: number = 15;
-  active: boolean = true;
-
-  draw(p: p5) {
-    if (!this.active) return;
-    p.fill(150, 75, 0); // 갈색
-    p.rect(this.x, this.y, this.width, this.height);
-  }
-}
-
-class HealthItem {
-  x: number = 500;
-  y: number = 550;
-  width: number = 20;
-  height: number = 20;
-  healAmount: number = 20;
-  active: boolean = true;
-
-  draw(p: p5) {
-    if (!this.active) return;
-    p.fill(0, 255, 0); // 초록색
-    p.rect(this.x, this.y, this.width, this.height);
-  }
-}
-
-/**
- * 두 사각형의 충돌을 감지하는 함수 (AABB Collision Detection)
- * @param rect1 첫 번째 사각형 {x, y, width, height}
- * @param rect2 두 번째 사각형 {x, y, width, height}
- * @returns 충돌했다면 true, 아니면 false
- */
-function checkCollision(rect1: Player | Obstacle | HealthItem, rect2: Player | Obstacle | HealthItem): boolean {
-  return rect1.x < rect2.x + rect2.width &&
-         rect1.x + rect1.width > rect2.x &&
-         rect1.y < rect2.y + rect2.height &&
-         rect1.y + rect1.height > rect2.y;
-}
 
 const sketch = (p: p5) => {
-  // 클래스로부터 실제 객체(인스턴스)를 생성합니다.
   let player: Player;
-  let obstacle: Obstacle;
-  let healthItem: HealthItem;
+  let obstacleManager: ObstacleManager;
+  let powerUpManager: PowerUpManager;
+  let platformManager: PlatformManager;
+  let world: World;
+
+  // Level-specific state
+  let nextPlatformIndex = 0;
+  let nextObstacleIndex = 0;
+  let nextPowerUpIndex = 0;
+  let gameStatus: "playing" | "won" | "lost" = "playing";
+
+  // Scoring state
+  let lastScoreTime = 0;
+  const scoreInterval = 1000; // 1 second
+
+  function resetGame() {
+    player = new Player(p);
+    obstacleManager = new ObstacleManager(p);
+    powerUpManager = new PowerUpManager(p);
+    platformManager = new PlatformManager(p);
+    world = new World();
+    
+    // Reset level progress
+    nextPlatformIndex = 0;
+    nextObstacleIndex = 0;
+    nextPowerUpIndex = 0;
+    
+    // Reset managers
+    scoreManager.resetScore();
+    healthManager.resetHealth();
+
+    lastScoreTime = p.millis();
+    gameStatus = "playing";
+  }
 
   p.setup = () => {
     p.createCanvas(800, 600);
+    resetGame();
+
+    // Re-attach the reset button listener to call resetGame
+    document.getElementById("reset-button")!.onclick = () => {
+        resetGame();
+    };
   };
 
-  p.draw = () => {
-    p.background(220);
-
-    drawScoreUI(p, scoreManager);
-    
-    // 각 객체의 상태를 업데이트하고 화면에 그립니다.
-    player.update(p);
-    player.draw(p);
-    obstacle.draw(p);
-    healthItem.draw(p);
-
-    // --- 충돌 처리 로직 ---
-    // 1. 장애물과 충돌했는지 확인
-    if (obstacle.active && checkCollision(player, obstacle)) {
-      healthManager.takeDamage(obstacle.damage);
-      obstacle.active = false; // 한 번만 부딪히도록 비활성화
-    }
-
-    // 2. 체력 아이템과 충돌했는지 확인
-    if (healthItem.active && checkCollision(player, healthItem)) {
-      healthManager.heal(healthItem.healAmount);
-      healthItem.active = false; // 한 번만 먹도록 비활성화
-    }
-
-    // 리셋 버튼을 누르면 객체들도 다시 생성되도록 로직 추가
-    document.getElementById("reset-button")!.onclick = () => {
-      scoreManager.resetScore();
-      healthManager.resetHealth();
-      p.setup(); // setup 함수를 다시 호출하여 객체들을 초기화
-    };
-
-    // 체력 바 그리기
+  function drawHealthBar() {
     const health = healthManager.getCurrentHealth();
     const maxHealth = healthManager.getMaxHealth();
-    const healthBarWidth = (health / maxHealth) * 200; // 체력 바 최대 너비 200px
+    const healthBarWidth = (health / maxHealth) * 200; // Health bar max width 200px
 
-    p.fill(255, 0, 0); // 빨간색
-    p.rect(20, 50, healthBarWidth, 20); // 체력 바 위치 및 크기
-    p.noFill();
+    p.push();
     p.stroke(0);
-    p.rect(20, 50, 200, 20); // 체력 바 테두리
+    p.strokeWeight(2);
+    
+    // Health bar background
+    p.fill(100);
+    p.rect(20, 20, 200, 20);
+
+    // Current health
+    p.fill(255, 0, 0); // Red
+    p.rect(20, 20, healthBarWidth, 20);
+    
+    // Health text
+    p.noStroke();
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(14);
+    p.text(`${health} / ${maxHealth}`, 120, 30);
+    p.pop();
+  }
+
+  p.draw = () => {
+    // --- GAME STATE CHECKS ---
+    if (gameStatus === "won") {
+      p.background(255);
+      p.fill(0);
+      p.textSize(32);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text("Level Complete!", p.width / 2, p.height / 2);
+      return; // Stop the draw loop
+    }
+    if (gameStatus === "lost") {
+      p.background(100);
+      p.fill(255, 0, 0);
+      p.textSize(32);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text("Game Over!", p.width / 2, p.height / 2);
+      return; // Stop the draw loop
+    }
+    
+    // --- UPDATES ---
+
+    world.update();
+    player.update(platformManager.platforms);
+
+    // Update score over time
+    if (gameStatus === "playing") {
+        const currentTime = p.millis();
+        if (currentTime - lastScoreTime > scoreInterval) {
+        scoreManager.updateScore(1);
+        lastScoreTime = currentTime;
+        }
+    }
+
+    // Spawn new objects from level data
+    if (nextPlatformIndex < level1.platforms.length && level1.platforms[nextPlatformIndex].x < world.worldX + p.width) {
+      const platData = level1.platforms[nextPlatformIndex];
+      platformManager.platforms.push(new Platform(p, platData.x, platData.width));
+      nextPlatformIndex++;
+    }
+    if (nextObstacleIndex < level1.obstacles.length && level1.obstacles[nextObstacleIndex].x < world.worldX + p.width) {
+      const obstacleData = level1.obstacles[nextObstacleIndex];
+      obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x));
+      nextObstacleIndex++;
+    }
+    if (nextPowerUpIndex < level1.powerUps.length && level1.powerUps[nextPowerUpIndex].x < world.worldX + p.width) {
+      const powerUpData = level1.powerUps[nextPowerUpIndex];
+      powerUpManager.powerUps.push(new PowerUp(p, powerUpData.x));
+      nextPowerUpIndex++;
+    }
+
+    // Update positions of all active objects
+    for (const platform of platformManager.platforms) {
+      platform.update(world.worldX);
+    }
+    for (const obstacle of obstacleManager.obstacles) {
+      obstacle.update(world.worldX);
+    }
+    for (const powerUp of powerUpManager.powerUps) {
+      powerUp.update(world.worldX);
+    }
+
+    // --- COLLISIONS & CLEANUP ---
+
+    for (let i = obstacleManager.obstacles.length - 1; i >= 0; i--) {
+      const obstacle = obstacleManager.obstacles[i];
+      if (player.collidesWith(obstacle)) {
+        if (player.isGiant) {
+          scoreManager.updateScore(100);
+          obstacleManager.obstacles.splice(i, 1);
+        } else {
+          healthManager.takeDamage(25); // Take 25 damage from obstacle
+          obstacleManager.obstacles.splice(i, 1); // Remove obstacle after collision
+        }
+      } else if (obstacle.isOffscreen()) {
+        obstacleManager.obstacles.splice(i, 1);
+      }
+    }
+    for (let i = powerUpManager.powerUps.length - 1; i >= 0; i--) {
+      const powerUp = powerUpManager.powerUps[i];
+      if (player.collidesWith(powerUp)) {
+        player.activateGiant(300);
+        powerUpManager.powerUps.splice(i, 1);
+      } else if (powerUp.isOffscreen()) {
+        powerUpManager.powerUps.splice(i, 1);
+      }
+    }
+    for (let i = platformManager.platforms.length - 1; i >= 0; i--) {
+        if (platformManager.platforms[i].isOffscreen()) {
+            platformManager.platforms.splice(i, 1);
+        }
+    }
+
+
+    // --- DRAWING ---
+    p.background(220);
+    player.draw(p);
+    obstacleManager.draw();
+    powerUpManager.draw();
+    platformManager.draw();
+    drawScoreUI(p, scoreManager);
+    drawHealthBar();
+
+    // --- STATE CHECKS ---
+    if (world.worldX >= level1.length) {
+      gameStatus = "won";
+    }
+    if (player.isDead()) { // Player falls off screen
+      gameStatus = "lost";
+    }
+    if (healthManager.isDead()) { // Player runs out of health
+        gameStatus = "lost";
+    }
+  };
+
+  p.keyPressed = () => {
+    if (p.keyCode === 32) { // 32 is the keycode for SPACE
+      player.jump();
+    }
   };
 };
 
