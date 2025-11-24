@@ -8,11 +8,13 @@ export class Obstacle implements Collidable {
   width: number;
   height: number;
 
-  constructor(p: p5, worldX: number) {
+  constructor(p: p5, worldX: number, y?: number, width?: number, height?: number) {
     this.worldX = worldX;
-    this.width = 30;
-    this.height = 60;
-    this.y = p.height * 0.75 - this.height; // Align with the new ground level
+    
+    this.width = width ?? 30;
+    this.height = height ?? 60;
+    
+    this.y = y ?? p.height * 0.75 - this.height; // Align with the new ground level or use provided y
     this.x = 0; // Initial screen position, will be updated
   }
 
@@ -22,7 +24,7 @@ export class Obstacle implements Collidable {
   }
 
   draw(p: p5) {
-    p.fill(0, 255, 0); // Green obstacles
+    p.fill(0, 255, 0); // Green for obstacles
     p.rect(this.x, this.y, this.width, this.height);
   }
 

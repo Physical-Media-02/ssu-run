@@ -1,7 +1,7 @@
 import p5 from "p5";
 import { Collidable } from "./collidable";
 
-export class PowerUp implements Collidable {
+export class HealthRecovery implements Collidable {
   worldX: number; // Position in the world
   x: number;      // Position on the screen, updated each frame
   y: number;
@@ -25,7 +25,7 @@ export class PowerUp implements Collidable {
   }
 
   draw(p: p5) {
-    p.fill(0, 0, 255); // Blue for power-up
+    p.fill(255, 192, 203); // Pink for health recovery
     p.ellipse(this.x + this.width / 2, this.y + this.height / 2, this.width, this.height);
   }
 
