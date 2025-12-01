@@ -13,7 +13,7 @@ import { HealthRecoveryManager } from "./systems/health_recovery_manager";
 import { Platform } from "./systems/platform";
 import { PlatformManager } from "./systems/platform_manager";
 import { World } from "./systems/world";
-import { level1 } from "./level";
+import { level1, LevelObject } from "./level";
 
 const scoreManager = new ScoreManager();
 const healthManager = new HealthManager(100); // Max health 100
@@ -30,6 +30,13 @@ document.getElementById("add-button")?.addEventListener("click", () => {
 document.getElementById("damage-button")?.addEventListener("click", () => {
   healthManager.takeDamage(10);
 });
+
+interface ImageMap {
+  background: p5.Image | null;
+}
+
+let images: ImageMap;
+let assetsLoaded = false;
 
 const sketch = (p: p5) => {
   let player: Player;
@@ -74,12 +81,18 @@ const sketch = (p: p5) => {
 
   p.setup = () => {
     p.createCanvas(800, 600);
-    resetGame();
-
-    // Re-attach the reset button listener to call resetGame
-    document.getElementById("reset-button")!.onclick = () => {
-        resetGame();
-    };
+    
+    images = { background: null }; // 초기화
+    
+    p.loadImage('src/assets/background.png', (img) => {
+      images.background = img;
+      assetsLoaded = true;
+      resetGame(); // 이미지가 로드된 후 게임 리셋 및 시작
+    }, (event) => {
+      console.error('Failed to load background image:', event);
+      assetsLoaded = true; // 로드 실패해도 게임은 시작되도록
+      resetGame();
+    });
   };
 
   function drawHealthBar() {
@@ -109,6 +122,14 @@ const sketch = (p: p5) => {
   }
 
   p.draw = () => {
+    if (!assetsLoaded) {
+      p.background(100);
+      p.fill(255);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text("Loading...", p.width/2, p.height/2);
+      return;
+    }
+
     // --- GAME STATE CHECKS ---
     if (gameStatus === "won") {
       p.background(255);
@@ -219,7 +240,19 @@ const sketch = (p: p5) => {
 
 
     // --- DRAWING ---
-    p.background(220);
+    if (images.background) {
+      // 배경 이미지가 로드되었다면 반복하여 그린다.
+      const bgWidth = images.background.width;
+      // 스크롤 속도를 조절하려면 world.worldX에 계수를 곱합니다. (예: * 0.5)
+      const parallaxX = world.worldX * 0.5;
+      const startX = - (parallaxX % bgWidth);
+      
+      for (let x = startX; x < p.width; x += bgWidth) {
+        p.image(images.background, x, 0, bgWidth, p.height);
+      }
+    } else {
+      p.background(220); // 배경 이미지가 없으면 단색 배경
+    }
     player.draw(p);
     obstacleManager.draw();
     powerUpManager.draw();
@@ -247,4 +280,6 @@ const sketch = (p: p5) => {
   };
 };
 
-new p5(sketch);
+window.addEventListener('DOMContentLoaded', () => {
+  new p5(sketch);
+});

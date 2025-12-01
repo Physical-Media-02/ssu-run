@@ -21,13 +21,9 @@ export interface LevelData {
 
 // A simple, hardcoded level definition for now.
 export const level1: LevelData = {
-  length: 5000,
+  length: 10000,
   platforms: [
-    { x: 0, width: 1200 }, // Start platform
-    { x: 1300, width: 500 },  // A platform after a 100px gap
-    { x: 1900, width: 800 },  // Another platform after a 100px gap
-    { x: 2800, width: 1000 },
-    { x: 3900, width: 2000 }, // Final platform leading to the end
+    { x: 0, width: 12000 }, // Start platform
   ],
   obstacles: [
     { x: 800 },
