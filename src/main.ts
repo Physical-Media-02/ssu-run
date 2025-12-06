@@ -99,6 +99,14 @@ const sketch = (p: p5) => {
   let bossVisible = false;
   let bossX = -200; // 화면 밖에서 시작
 
+  // Microphone state (마이크 파워업)
+  let micEnabled = false;
+  let audioContext: AudioContext | null = null;
+  let analyser: AnalyserNode | null = null;
+  let microphone: MediaStreamAudioSourceNode | null = null;
+  let micDataArray: Uint8Array<ArrayBuffer> | null = null;
+  const MIC_THRESHOLD = 50; // 데시벨 임계값 (0-255 범위, 조절 가능)
+
   function resetGame() {
     // Player 생성: (p5, 일반이미지, 거대화이미지, 슬라이드이미지, 너비, 높이, 히트박스스케일)
     const playerWidth = 160;
@@ -126,6 +134,41 @@ const sketch = (p: p5) => {
     bossX = -200;
 
     lastScoreTime = p.millis();
+  }
+
+  // 마이크 초기화 함수
+  async function initMicrophone() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
+      
+      analyser.fftSize = 256;
+      const bufferLength = analyser.frequencyBinCount;
+      micDataArray = new Uint8Array(bufferLength);
+      
+      micEnabled = true;
+      console.log("마이크 초기화 성공!");
+    } catch (err) {
+      console.error("마이크 접근 실패:", err);
+      micEnabled = false;
+    }
+  }
+
+  // 마이크 볼륨 측정 함수 (0-255 범위)
+  function getMicVolume(): number {
+    if (!analyser || !micDataArray) return 0;
+    
+    analyser.getByteFrequencyData(micDataArray);
+    
+    // 평균 볼륨 계산
+    let sum = 0;
+    for (let i = 0; i < micDataArray.length; i++) {
+      sum += micDataArray[i];
+    }
+    return sum / micDataArray.length;
   }
 
   function createButton(x: number, y: number, width: number, height: number, label: string, action: () => void, image?: p5.Image | null) {
@@ -173,6 +216,10 @@ const sketch = (p: p5) => {
       createButton(p.width / 2 - 240, p.height - 120, 200, 60, "게임 시작", () => {
         currentScreen = "playing";
         resetGame();
+        // 마이크 초기화 (첫 번째 게임 시작 시)
+        if (!micEnabled) {
+          initMicrophone();
+        }
       }, images.btnStart),
       createButton(p.width / 2 + 60, p.height - 120, 200, 60, "도움말", () => {
         currentScreen = "help";
@@ -560,6 +607,20 @@ const sketch = (p: p5) => {
     world.update();
     player.update(platformManager.platforms);
 
+    // --- MICROPHONE POWER-UP (마이크 파워업) ---
+    if (micEnabled) {
+      const volume = getMicVolume();
+      if (volume > MIC_THRESHOLD) {
+        // 마이크 볼륨이 임계값 초과 시 파워업 활성화
+        if (!player.isGiant) {
+          player.activateGiant(60); // 짧은 지속시간 (매 프레임 갱신됨)
+        } else {
+          // 이미 거대화 상태면 타이머 갱신
+          player.activateGiant(60);
+        }
+      }
+    }
+
     // Update score over time
     const currentTime = p.millis();
     if (currentTime - lastScoreTime > scoreInterval) {
@@ -766,6 +827,42 @@ const sketch = (p: p5) => {
 
     drawScoreUI(p, scoreManager);
     drawHealthBar();
+
+    // --- MICROPHONE VOLUME BAR (마이크 볼륨 표시) ---
+    if (micEnabled) {
+      const volume = getMicVolume();
+      const maxVolume = 255;
+      const volumeBarWidth = (volume / maxVolume) * 150;
+      
+      p.push();
+      p.noStroke();
+      
+      // 배경
+      p.fill(50, 50, 50, 150);
+      p.rect(p.width - 170, 20, 150, 20, 5);
+      
+      // 볼륨 바 (임계값 초과 시 색상 변경)
+      if (volume > MIC_THRESHOLD) {
+        p.fill(255, 200, 0); // 노란색 (파워업 활성화)
+      } else {
+        p.fill(100, 200, 100); // 초록색
+      }
+      p.rect(p.width - 170, 20, volumeBarWidth, 20, 5);
+      
+      // 임계값 선
+      const thresholdX = p.width - 170 + (MIC_THRESHOLD / maxVolume) * 150;
+      p.stroke(255, 0, 0);
+      p.strokeWeight(2);
+      p.line(thresholdX, 18, thresholdX, 42);
+      
+      // 마이크 아이콘/텍스트
+      p.noStroke();
+      p.fill(255);
+      p.textSize(12);
+      p.textAlign(p.RIGHT, p.CENTER);
+      p.text("🎤", p.width - 175, 30);
+      p.pop();
+    }
 
     // --- STATE CHECKS ---
     if (collidesWithFlag) {
