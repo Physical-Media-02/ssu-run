@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-  // GitHub Pages 배포용 - 리포지토리 이름으로 설정
-  base: '/ssu-run/',
+export default defineConfig(({ mode }) => ({
+  // 환경에 따른 base 경로 설정
+  // 개발: '/' | 프로덕션(GitHub Pages): '/ssu-run/'
+  base: mode === 'production' ? '/ssu-run/' : '/',
   server: {
     port: 3000,
   },
@@ -10,4 +11,4 @@ export default defineConfig({
     outDir: 'dist',
     target: 'es2020',
   },
-})
+}))

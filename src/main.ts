@@ -15,32 +15,8 @@ import { PlatformManager } from "./systems/platform_manager";
 import { World } from "./systems/world";
 import { level1 } from "./level";
 
-// 이미지 import
-import backgroundImg from "./assets/background.png";
-import obstacleBottom1 from "./assets/obstacle_bottom_1.png";
-import obstacleBottom2 from "./assets/obstacle_bottom_2.png";
-import obstacleBottom3 from "./assets/obstacle_bottom_3.png";
-import obstacleBottom4 from "./assets/obstacle_bottom_4.png";
-import obstacleTop1 from "./assets/obstacle_top_1.png";
-import obstacleTop2 from "./assets/obstacle_top_2.png";
-import obstacleTop3 from "./assets/obstacle_top_3.png";
-import itemPowerUpImg from "./assets/item_power_up.png";
-import itemHealthImg from "./assets/item_health.png";
-import characterImg from "./assets/character.png";
-import characterPowerUpImg from "./assets/character_power_up.png";
-import characterSlideImg from "./assets/character_slide.png";
-import endingWinImg from "./assets/ending_win.png";
-import endingOverImg from "./assets/ending_over.png";
-import mainImg from "./assets/main.png";
-import helpImg from "./assets/help.png";
-import bossImg from "./assets/boss.png";
-import bossRunImg from "./assets/boss_run.png";
-import btnStartImg from "./assets/btn_start.png";
-import btnHelpImg from "./assets/btn_help.png";
-import btnCloseImg from "./assets/btn_close.png";
-import btnHomeImg from "./assets/btn_home.png";
-import btnRetryImg from "./assets/btn_retry.png";
-import endingPointImg from "./assets/ending_point.png";
+// 이미지 경로 (Vite의 base path를 사용하여 자동 설정)
+const ASSET_PATH = `${import.meta.env.BASE_URL}assets`;
 
 const scoreManager = new ScoreManager();
 const healthManager = new HealthManager(100);
@@ -348,7 +324,7 @@ const sketch = (p: p5) => {
     };
     
     // 배경 이미지 로드
-    p.loadImage(backgroundImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/background.png`, (img) => {
       images.background = img;
       checkAllLoaded();
     }, (event) => {
@@ -357,7 +333,12 @@ const sketch = (p: p5) => {
     });
     
     // 하단 장애물 이미지 로드 (4개)
-    const bottomImages = [obstacleBottom1, obstacleBottom2, obstacleBottom3, obstacleBottom4];
+    const bottomImages = [
+      `${ASSET_PATH}/obstacle_bottom_1.png`,
+      `${ASSET_PATH}/obstacle_bottom_2.png`,
+      `${ASSET_PATH}/obstacle_bottom_3.png`,
+      `${ASSET_PATH}/obstacle_bottom_4.png`
+    ];
     bottomImages.forEach((imgPath, i) => {
       p.loadImage(imgPath, (img) => {
         images.obstacleBottom.push(img);
@@ -370,7 +351,11 @@ const sketch = (p: p5) => {
     });
     
     // 상단 장애물 이미지 로드 (3개)
-    const topImages = [obstacleTop1, obstacleTop2, obstacleTop3];
+    const topImages = [
+      `${ASSET_PATH}/obstacle_top_1.png`,
+      `${ASSET_PATH}/obstacle_top_2.png`,
+      `${ASSET_PATH}/obstacle_top_3.png`
+    ];
     topImages.forEach((imgPath, i) => {
       p.loadImage(imgPath, (img) => {
         images.obstacleTop.push(img);
@@ -383,7 +368,7 @@ const sketch = (p: p5) => {
     });
     
     // 파워업 아이템 이미지 로드
-    p.loadImage(itemPowerUpImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/item_power_up.png`, (img) => {
       images.powerUp = img;
       console.log(`power_up size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -393,7 +378,7 @@ const sketch = (p: p5) => {
     });
     
     // 체력 회복 아이템 이미지 로드
-    p.loadImage(itemHealthImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/item_health.png`, (img) => {
       images.healthRecovery = img;
       console.log(`health_recovery size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -403,7 +388,7 @@ const sketch = (p: p5) => {
     });
     
     // 캐릭터 이미지 로드 (일반)
-    p.loadImage(characterImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/character.png`, (img) => {
       images.character = img;
       console.log(`character size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -413,7 +398,7 @@ const sketch = (p: p5) => {
     });
     
     // 캐릭터 이미지 로드 (거대화)
-    p.loadImage(characterPowerUpImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/character_power_up.png`, (img) => {
       images.characterPowerUp = img;
       console.log(`character_power_up size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -423,7 +408,7 @@ const sketch = (p: p5) => {
     });
 
     // 캐릭터 이미지 로드 (슬라이드)
-    p.loadImage(characterSlideImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/character_slide.png`, (img) => {
       images.characterSlide = img;
       console.log(`character_slide size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -433,7 +418,7 @@ const sketch = (p: p5) => {
     });
 
     // 승리 화면 이미지 로드
-    p.loadImage(endingWinImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/ending_win.png`, (img) => {
       images.endingWin = img;
       console.log(`ending_win size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -443,7 +428,7 @@ const sketch = (p: p5) => {
     });
 
     // 패배 화면 이미지 로드
-    p.loadImage(endingOverImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/ending_over.png`, (img) => {
       images.endingOver = img;
       console.log(`ending_over size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -453,7 +438,7 @@ const sketch = (p: p5) => {
     });
 
     // 메인 화면 이미지 로드
-    p.loadImage(mainImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/main.png`, (img) => {
       images.main = img;
       console.log(`main size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -463,7 +448,7 @@ const sketch = (p: p5) => {
     });
 
     // 도움말 화면 이미지 로드
-    p.loadImage(helpImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/help.png`, (img) => {
       images.help = img;
       console.log(`help size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -473,7 +458,7 @@ const sketch = (p: p5) => {
     });
 
     // 보스(교수님) 이미지 로드
-    p.loadImage(bossImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/boss.png`, (img) => {
       images.boss = img;
       console.log(`boss size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -483,7 +468,7 @@ const sketch = (p: p5) => {
     });
 
     // 보스(교수님) 달리기 이미지 로드
-    p.loadImage(bossRunImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/boss_run.png`, (img) => {
       images.bossRun = img;
       console.log(`boss_run size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -493,7 +478,7 @@ const sketch = (p: p5) => {
     });
 
     // 버튼 이미지 로드
-    p.loadImage(btnStartImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/btn_start.png`, (img) => {
       images.btnStart = img;
       console.log(`btn_start size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -502,7 +487,7 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     });
 
-    p.loadImage(btnHelpImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/btn_help.png`, (img) => {
       images.btnHelp = img;
       console.log(`btn_help size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -511,7 +496,7 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     });
 
-    p.loadImage(btnCloseImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/btn_close.png`, (img) => {
       images.btnClose = img;
       console.log(`btn_close size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -520,7 +505,7 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     });
 
-    p.loadImage(btnHomeImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/btn_home.png`, (img) => {
       images.btnHome = img;
       console.log(`btn_home size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -529,7 +514,7 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     });
 
-    p.loadImage(btnRetryImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/btn_retry.png`, (img) => {
       images.btnRetry = img;
       console.log(`btn_retry size: ${img.width}x${img.height}`);
       checkAllLoaded();
@@ -538,7 +523,7 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     });
 
-    p.loadImage(endingPointImg, (img) => {
+    p.loadImage(`${ASSET_PATH}/ending_point.png`, (img) => {
       images.endingPoint = img;
       console.log(`ending_point size: ${img.width}x${img.height}`);
       checkAllLoaded();
