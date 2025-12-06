@@ -40,6 +40,7 @@ import btnHelpImg from "./assets/btn_help.png";
 import btnCloseImg from "./assets/btn_close.png";
 import btnHomeImg from "./assets/btn_home.png";
 import btnRetryImg from "./assets/btn_retry.png";
+import endingPointImg from "./assets/ending_point.png";
 
 const scoreManager = new ScoreManager();
 const healthManager = new HealthManager(100);
@@ -64,6 +65,7 @@ interface ImageMap {
   btnClose: p5.Image | null;
   btnHome: p5.Image | null;
   btnRetry: p5.Image | null;
+  endingPoint: p5.Image | null;
 }
 
 let images: ImageMap;
@@ -283,11 +285,12 @@ const sketch = (p: p5) => {
       btnHelp: null,
       btnClose: null,
       btnHome: null,
-      btnRetry: null
+      btnRetry: null,
+      endingPoint: null
     }; // 초기화
     
     let loadedCount = 0;
-    const totalImages = 24; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5
+    const totalImages = 25; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1
     
     const checkAllLoaded = () => {
       loadedCount++;
@@ -485,6 +488,15 @@ const sketch = (p: p5) => {
       checkAllLoaded();
     }, (event) => {
       console.error('Failed to load btn_retry image:', event);
+      checkAllLoaded();
+    });
+
+    p.loadImage(endingPointImg, (img) => {
+      images.endingPoint = img;
+      console.log(`ending_point size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load ending_point image:', event);
       checkAllLoaded();
     });
   };
@@ -715,11 +727,48 @@ const sketch = (p: p5) => {
     powerUpManager.draw();
     healthRecoveryManager.draw();
     platformManager.draw();
+
+    // --- ENDING POINT (깃발) ---
+    const flagData = level1.endingPoint;
+    const flagX = flagData.x - world.worldX; // 깃발의 화면상 X 위치
+    const flagWidth = flagData.width || 150;
+    const flagHeight = flagData.height || 200;
+    const flagY = p.height * 0.75 - flagHeight; // 바닥 위
+    
+    // 깃발이 화면 안에 있을 때만 그리기
+    if (flagX < p.width + flagWidth && flagX > -flagWidth) {
+      if (images.endingPoint) {
+        p.image(images.endingPoint, flagX, flagY, flagWidth, flagHeight);
+      } else {
+        // 이미지 없으면 기본 도형
+        p.fill(255, 215, 0);
+        p.rect(flagX, flagY, flagWidth, flagHeight);
+      }
+    }
+
+    // 깃발과 플레이어 충돌 체크 (클리어 조건)
+    const playerHitbox = player.getHitbox();
+    const hitboxScale = flagData.hitboxScale || 0.4; // level.ts에서 설정한 히트박스 비율
+    const hitboxWidth = flagWidth * hitboxScale;
+    const hitboxHeight = flagHeight * hitboxScale;
+    const flagHitbox = {
+      x: flagX + (flagWidth - hitboxWidth) / 2,  // 중앙 정렬
+      y: flagY + (flagHeight - hitboxHeight) / 2,
+      width: hitboxWidth,
+      height: hitboxHeight
+    };
+    
+    const collidesWithFlag = 
+      playerHitbox.x < flagHitbox.x + flagHitbox.width &&
+      playerHitbox.x + playerHitbox.width > flagHitbox.x &&
+      playerHitbox.y < flagHitbox.y + flagHitbox.height &&
+      playerHitbox.y + playerHitbox.height > flagHitbox.y;
+
     drawScoreUI(p, scoreManager);
     drawHealthBar();
 
     // --- STATE CHECKS ---
-    if (world.worldX >= level1.length) {
+    if (collidesWithFlag) {
       currentScreen = "won";
     }
     if (player.isDead()) {

@@ -10,12 +10,20 @@ export interface PlatformData {
   width: number;
 }
 
+export interface EndingPointData {
+  x: number;
+  width?: number;
+  height?: number;
+  hitboxScale?: number;  // 히트박스 비율 (0.0 ~ 1.0, 기본값: 0.4)
+}
+
 export interface LevelData {
   length: number;
   platforms: PlatformData[];
   obstacles: LevelObject[];
   powerUps: LevelObject[];
   healthRecoveries: LevelObject[];
+  endingPoint: EndingPointData;
 }
 
 export const level1: LevelData = {
@@ -92,4 +100,10 @@ export const level1: LevelData = {
     { x: 4700 },
     { x: 9100 },
   ],
+  endingPoint: {
+    x: 15000,           // 깃발 X 위치
+    width: 500,        // 깃발 너비
+    height: 400,       // 깃발 높이
+    hitboxScale: 0.8   // 히트박스 비율 (80%)
+  }
 };

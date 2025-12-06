@@ -43,7 +43,7 @@ export class Player {
     this.giantWidth = baseWidth * 1.5;
     this.giantHeight = baseHeight * 1.5;
     this.slideWidth = baseWidth * 1.2;
-    this.slideHeight = baseHeight; // 슬라이드 시 높이 반으로
+    this.slideHeight = baseHeight * 0.7; // 슬라이드 시 높이 반으로
     this.hitboxScale = hitboxScale;
     
     this.width = this.baseWidth;
