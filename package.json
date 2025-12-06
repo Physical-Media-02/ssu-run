@@ -1,12 +1,13 @@
 {
-  "name": "p5-demo",
+  "name": "ssu-run",
   "version": "1.0.0",
-  "description": "",
+  "description": "SSU Run - Cookie Run Style Game",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "pnpm build && gh-pages -d dist"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@types/p5": "^1.7.6",
+    "gh-pages": "^6.3.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.4"
   }
