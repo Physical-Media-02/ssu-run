@@ -2,34 +2,64 @@ import p5 from "p5";
 import { Collidable } from "./collidable";
 
 export class HealthRecovery implements Collidable {
-  worldX: number; // Position in the world
-  x: number;      // Position on the screen, updated each frame
+  worldX: number;
+  x: number;
   y: number;
-  width: number;
+  width: number;  // 충돌 박스 크기
   height: number;
+  private displayWidth: number;
+  private displayHeight: number;
+  private image: p5.Image | null;
 
-  constructor(p: p5, worldX: number, y?: number, width?: number, height?: number) {
+  constructor(
+    p: p5,
+    worldX: number,
+    y?: number,
+    displayWidth?: number,
+    displayHeight?: number,
+    image?: p5.Image | null,
+    hitboxScale: number = 0.7
+  ) {
     this.worldX = worldX;
+    this.image = image || null;
 
-    this.width = width ?? 20;
-    this.height = height ?? 20;
+    this.displayWidth = displayWidth ?? 35;
+    this.displayHeight = displayHeight ?? 35;
+    this.width = this.displayWidth * hitboxScale;
+    this.height = this.displayHeight * hitboxScale;
 
-    // Position slightly above the new ground level
-    this.y = y ?? p.height * 0.75 - this.height - 30;
-    this.x = 0; // Initial screen position, will be updated
+    this.y = y ?? p.height * 0.75 - this.displayHeight - 30;
+    this.x = 0;
   }
 
-  // Update the screen position based on the world scroll
+  getHitbox() {
+    return {
+      x: this.x + (this.displayWidth - this.width) / 2,
+      y: this.y + (this.displayHeight - this.height) / 2,
+      width: this.width,
+      height: this.height
+    };
+  }
+
   update(worldScrollX: number) {
     this.x = this.worldX - worldScrollX;
   }
 
   draw(p: p5) {
-    p.fill(255, 192, 203); // Pink for health recovery
-    p.ellipse(this.x + this.width / 2, this.y + this.height / 2, this.width, this.height);
+    p.push();
+    p.imageMode(p.CORNER);
+    
+    if (this.image && this.image.width > 0) {
+      p.image(this.image, this.x, this.y, this.displayWidth, this.displayHeight);
+    } else {
+      // 폴백
+      p.fill(255, 192, 203);
+      p.ellipse(this.x + this.displayWidth / 2, this.y + this.displayHeight / 2, this.displayWidth, this.displayHeight);
+    }
+    p.pop();
   }
 
   isOffscreen(): boolean {
-    return this.x < -this.width;
+    return this.x < -this.displayWidth;
   }
 }

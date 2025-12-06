@@ -13,7 +13,21 @@ import { HealthRecoveryManager } from "./systems/health_recovery_manager";
 import { Platform } from "./systems/platform";
 import { PlatformManager } from "./systems/platform_manager";
 import { World } from "./systems/world";
-import { level1, LevelObject } from "./level";
+import { level1 } from "./level";
+
+// 이미지 import
+import backgroundImg from "./assets/background.png";
+import obstacleBottom1 from "./assets/obstacle_bottom_1.png";
+import obstacleBottom2 from "./assets/obstacle_bottom_2.png";
+import obstacleBottom3 from "./assets/obstacle_bottom_3.png";
+import obstacleBottom4 from "./assets/obstacle_bottom_4.png";
+import obstacleTop1 from "./assets/obstacle_top_1.png";
+import obstacleTop2 from "./assets/obstacle_top_2.png";
+import obstacleTop3 from "./assets/obstacle_top_3.png";
+import itemPowerUpImg from "./assets/item_power_up.png";
+import itemHealthImg from "./assets/item_health.png";
+import characterImg from "./assets/character.png";
+import characterPowerUpImg from "./assets/character_power_up.png";
 
 const scoreManager = new ScoreManager();
 const healthManager = new HealthManager(100); // Max health 100
@@ -33,6 +47,12 @@ document.getElementById("damage-button")?.addEventListener("click", () => {
 
 interface ImageMap {
   background: p5.Image | null;
+  obstacleBottom: p5.Image[];
+  obstacleTop: p5.Image[];
+  powerUp: p5.Image | null;
+  healthRecovery: p5.Image | null;
+  character: p5.Image | null;
+  characterPowerUp: p5.Image | null;
 }
 
 let images: ImageMap;
@@ -58,7 +78,11 @@ const sketch = (p: p5) => {
   const scoreInterval = 1000; // 1 second
 
   function resetGame() {
-    player = new Player(p);
+    // Player 생성: (p5, 일반이미지, 거대화이미지, 너비, 높이, 히트박스스케일)
+    const playerWidth = 80;
+    const playerHeight = 80;
+    const playerHitboxScale = 0.6; // 히트박스는 표시 크기의 60%
+    player = new Player(p, images.character, images.characterPowerUp, playerWidth, playerHeight, playerHitboxScale);
     obstacleManager = new ObstacleManager(p);
     powerUpManager = new PowerUpManager(p);
     healthRecoveryManager = new HealthRecoveryManager(p);
@@ -82,16 +106,100 @@ const sketch = (p: p5) => {
   p.setup = () => {
     p.createCanvas(800, 600);
     
-    images = { background: null }; // 초기화
+    images = { 
+      background: null,
+      obstacleBottom: [],
+      obstacleTop: [],
+      powerUp: null,
+      healthRecovery: null,
+      character: null,
+      characterPowerUp: null
+    }; // 초기화
     
-    p.loadImage('src/assets/background.png', (img) => {
+    let loadedCount = 0;
+    const totalImages = 12; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 2
+    
+    const checkAllLoaded = () => {
+      loadedCount++;
+      if (loadedCount === totalImages) {
+        assetsLoaded = true;
+        resetGame();
+      }
+    };
+    
+    // 배경 이미지 로드
+    p.loadImage(backgroundImg, (img) => {
       images.background = img;
-      assetsLoaded = true;
-      resetGame(); // 이미지가 로드된 후 게임 리셋 및 시작
+      checkAllLoaded();
     }, (event) => {
       console.error('Failed to load background image:', event);
-      assetsLoaded = true; // 로드 실패해도 게임은 시작되도록
-      resetGame();
+      checkAllLoaded();
+    });
+    
+    // 하단 장애물 이미지 로드 (4개)
+    const bottomImages = [obstacleBottom1, obstacleBottom2, obstacleBottom3, obstacleBottom4];
+    bottomImages.forEach((imgPath, i) => {
+      p.loadImage(imgPath, (img) => {
+        images.obstacleBottom.push(img);
+        console.log(`obstacle_bottom_${i + 1} size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      }, (event) => {
+        console.error(`Failed to load obstacle_bottom_${i + 1} image:`, event);
+        checkAllLoaded();
+      });
+    });
+    
+    // 상단 장애물 이미지 로드 (3개)
+    const topImages = [obstacleTop1, obstacleTop2, obstacleTop3];
+    topImages.forEach((imgPath, i) => {
+      p.loadImage(imgPath, (img) => {
+        images.obstacleTop.push(img);
+        console.log(`obstacle_top_${i + 1} size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      }, (event) => {
+        console.error(`Failed to load obstacle_top_${i + 1} image:`, event);
+        checkAllLoaded();
+      });
+    });
+    
+    // 파워업 아이템 이미지 로드
+    p.loadImage(itemPowerUpImg, (img) => {
+      images.powerUp = img;
+      console.log(`power_up size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load power_up image:', event);
+      checkAllLoaded();
+    });
+    
+    // 체력 회복 아이템 이미지 로드
+    p.loadImage(itemHealthImg, (img) => {
+      images.healthRecovery = img;
+      console.log(`health_recovery size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load health_recovery image:', event);
+      checkAllLoaded();
+    });
+    
+    // 캐릭터 이미지 로드 (일반)
+    p.loadImage(characterImg, (img) => {
+      images.character = img;
+      console.log(`character size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load character image:', event);
+      checkAllLoaded();
+    });
+    
+    // 캐릭터 이미지 로드 (거대화)
+    p.loadImage(characterPowerUpImg, (img) => {
+      images.characterPowerUp = img;
+      console.log(`character_power_up size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load character_power_up image:', event);
+      checkAllLoaded();
     });
   };
 
@@ -170,17 +278,37 @@ const sketch = (p: p5) => {
     }
     if (nextObstacleIndex < level1.obstacles.length && level1.obstacles[nextObstacleIndex].x < world.worldX + p.width) {
       const obstacleData = level1.obstacles[nextObstacleIndex];
-      obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x, obstacleData.y, obstacleData.width, obstacleData.height));
+      const isTop = obstacleData.y !== undefined && obstacleData.y < p.height * 0.75 - 100;
+      const obstacleImages = isTop ? images.obstacleTop : images.obstacleBottom;
+      
+      // 이미지 배열이 비어있지 않은지 확인
+      if (obstacleImages.length > 0) {
+        const randomImage = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+        // 이미지 표시 크기를 키우고, 충돌 박스는 60%로 설정
+        const displayWidth = 120;  // 이미지 표시 크기 (크게)
+        const displayHeight = 100;
+        const hitboxScale = 0.2;  // 충돌 박스는 20% 크기 (작게)
+        obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x, obstacleData.y, displayWidth, displayHeight, randomImage, hitboxScale));
+      } else {
+        // 이미지가 아직 로드되지 않았으면 기본 크기로 생성
+        obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x, obstacleData.y, obstacleData.width, obstacleData.height));
+      }
       nextObstacleIndex++;
     }
     if (nextPowerUpIndex < level1.powerUps.length && level1.powerUps[nextPowerUpIndex].x < world.worldX + p.width) {
       const powerUpData = level1.powerUps[nextPowerUpIndex];
-      powerUpManager.powerUps.push(new PowerUp(p, powerUpData.x, powerUpData.y, powerUpData.width, powerUpData.height));
+      const displayWidth = 120;  // 아이템 표시 크기
+      const displayHeight = 120;
+      const hitboxScale = 0.7;  // 충돌 박스 70%
+      powerUpManager.powerUps.push(new PowerUp(p, powerUpData.x, powerUpData.y, displayWidth, displayHeight, images.powerUp, hitboxScale));
       nextPowerUpIndex++;
     }
     if (nextHealthRecoveryIndex < level1.healthRecoveries.length && level1.healthRecoveries[nextHealthRecoveryIndex].x < world.worldX + p.width) {
       const healthRecoveryData = level1.healthRecoveries[nextHealthRecoveryIndex];
-      healthRecoveryManager.healthRecoveries.push(new HealthRecovery(p, healthRecoveryData.x, healthRecoveryData.y, healthRecoveryData.width, healthRecoveryData.height));
+      const displayWidth = 120;  // 아이템 표시 크기
+      const displayHeight = 120;
+      const hitboxScale = 0.7;  // 충돌 박스 70%
+      healthRecoveryManager.healthRecoveries.push(new HealthRecovery(p, healthRecoveryData.x, healthRecoveryData.y, displayWidth, displayHeight, images.healthRecovery, hitboxScale));
       nextHealthRecoveryIndex++;
     }
 

@@ -1,35 +1,68 @@
 import p5 from "p5";
-import { Collidable } from "./collidable";
 import { Platform } from "./platform";
 
 export class Player {
   x: number;
   y: number;
-  size: number; // Current size
+  width: number;
+  height: number;
   isGiant: boolean;
   isOnGround: boolean;
 
-  private baseSize: number;
-  private giantSize: number;
-  private vy: number; // Vertical velocity
+  private baseWidth: number;
+  private baseHeight: number;
+  private giantWidth: number;
+  private giantHeight: number;
+  private hitboxWidth: number;
+  private hitboxHeight: number;
+  private hitboxScale: number;
+  private vy: number;
   private gravity: number;
   private jumpStrength: number;
   private giantTimer: number;
   private p: p5;
+  private normalImage: p5.Image | null;
+  private giantImage: p5.Image | null;
 
-  constructor(p: p5) {
+  constructor(
+    p: p5, 
+    normalImage?: p5.Image | null, 
+    giantImage?: p5.Image | null,
+    baseWidth: number = 120,
+    baseHeight: number = 80,
+    hitboxScale: number = 0.6
+  ) {
     this.p = p;
-    this.baseSize = 50;
-    this.giantSize = 75;
-    this.size = this.baseSize;
-    this.x = p.width / 2 - this.size / 2;
-    this.y = p.height * 0.75 - this.size; // Start on the new ground level
+    this.baseWidth = baseWidth;
+    this.baseHeight = baseHeight;
+    this.giantWidth = baseWidth * 1.5;
+    this.giantHeight = baseHeight * 1.5;
+    this.hitboxScale = hitboxScale;
+    
+    this.width = this.baseWidth;
+    this.height = this.baseHeight;
+    this.hitboxWidth = this.width * hitboxScale;
+    this.hitboxHeight = this.height * hitboxScale;
+    
+    this.x = p.width / 2 - this.width / 2;
+    this.y = p.height * 0.75 - this.height;
     this.vy = 0;
     this.gravity = 0.6;
     this.jumpStrength = -16;
     this.isGiant = false;
     this.isOnGround = false;
     this.giantTimer = 0;
+    this.normalImage = normalImage || null;
+    this.giantImage = giantImage || null;
+  }
+  
+  getHitbox() {
+    return {
+      x: this.x + (this.width - this.hitboxWidth) / 2,
+      y: this.y + (this.height - this.hitboxHeight) / 2,
+      width: this.hitboxWidth,
+      height: this.hitboxHeight
+    };
   }
 
   jump() {
@@ -38,27 +71,23 @@ export class Player {
       this.isOnGround = false;
     }
   }
-
   update(platforms: Platform[]) {
-    // Apply gravity
     this.vy += this.gravity;
     this.y += this.vy;
 
-    // Platform collision detection
     this.isOnGround = false;
     for (const platform of platforms) {
-      const isHorizontallyAligned = this.x + this.size > platform.x && this.x < platform.x + platform.width;
-      const isVerticallyAligned = this.y + this.size >= platform.y && this.y + this.size <= platform.y + platform.height + this.vy;
+      const isHorizontallyAligned = this.x + this.width > platform.x && this.x < platform.x + platform.width;
+      const isVerticallyAligned = this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height + this.vy;
       
       if (isHorizontallyAligned && isVerticallyAligned) {
-        this.y = platform.y - this.size; // Snap to the top of the platform
+        this.y = platform.y - this.height;
         this.vy = 0;
         this.isOnGround = true;
-        break; // Stop checking after finding a platform
+        break;
       }
     }
 
-    // Update giant state timer
     if (this.isGiant) {
       this.giantTimer--;
       if (this.giantTimer <= 0) {
@@ -68,12 +97,22 @@ export class Player {
   }
 
   draw(p: p5) {
-    if (this.isGiant) {
-      p.fill(255, 200, 0); // Orange for giant state
+    p.push();
+    p.imageMode(p.CORNER);
+    
+    const currentImage = this.isGiant ? this.giantImage : this.normalImage;
+    
+    if (currentImage && currentImage.width > 0) {
+      p.image(currentImage, this.x, this.y, this.width, this.height);
     } else {
-      p.fill(255, 0, 0); // Red for normal state
+      if (this.isGiant) {
+        p.fill(255, 200, 0);
+      } else {
+        p.fill(255, 0, 0);
+      }
+      p.rect(this.x, this.y, this.width, this.height);
     }
-    p.rect(this.x, this.y, this.size, this.size);
+    p.pop();
   }
 
   isDead(): boolean {
@@ -82,32 +121,53 @@ export class Player {
 
   activateGiant(duration: number) {
     this.isGiant = true;
-    const oldSize = this.size;
-    this.size = this.giantSize;
-    this.y -= (this.size - oldSize); // Adjust y position to grow upwards
+    const oldHeight = this.height;
+    this.width = this.giantWidth;
+    this.height = this.giantHeight;
+    this.hitboxWidth = this.width * this.hitboxScale;
+    this.hitboxHeight = this.height * this.hitboxScale;
+    this.y -= (this.height - oldHeight);
     this.giantTimer = duration;
     console.log("Player is GIANT!");
   }
 
   deactivateGiant() {
     this.isGiant = false;
-    this.size = this.baseSize;
-    // No need to adjust y on deactivation, gravity will handle it.
+    this.width = this.baseWidth;
+    this.height = this.baseHeight;
+    this.hitboxWidth = this.width * this.hitboxScale;
+    this.hitboxHeight = this.height * this.hitboxScale;
     console.log("Player is normal size.");
   }
 
-  // AABB collision detection
-  collidesWith(other: Collidable): boolean {
-    const playerRight = this.x + this.size;
-    const playerBottom = this.y + this.size;
-    const otherRight = other.x + other.width;
-    const otherBottom = other.y + other.height;
+  collidesWith(other: any): boolean {
+    const playerHitbox = this.getHitbox();
+    
+    let otherX, otherY, otherWidth, otherHeight;
+    
+    if ('getHitbox' in other && typeof other.getHitbox === 'function') {
+      const hitbox = other.getHitbox();
+      otherX = hitbox.x;
+      otherY = hitbox.y;
+      otherWidth = hitbox.width;
+      otherHeight = hitbox.height;
+    } else {
+      otherX = other.x;
+      otherY = other.y;
+      otherWidth = other.width;
+      otherHeight = other.height;
+    }
+    
+    const playerRight = playerHitbox.x + playerHitbox.width;
+    const playerBottom = playerHitbox.y + playerHitbox.height;
+    const otherRight = otherX + otherWidth;
+    const otherBottom = otherY + otherHeight;
 
     return (
-      this.x < otherRight &&
-      playerRight > other.x &&
-      this.y < otherBottom &&
-      playerBottom > other.y
+      playerHitbox.x < otherRight &&
+      playerRight > otherX &&
+      playerHitbox.y < otherBottom &&
+      playerBottom > otherY
     );
   }
 }
