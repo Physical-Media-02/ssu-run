@@ -8,11 +8,14 @@ export class Player {
   height: number;
   isGiant: boolean;
   isOnGround: boolean;
+  isSliding: boolean;
 
   private baseWidth: number;
   private baseHeight: number;
   private giantWidth: number;
   private giantHeight: number;
+  private slideWidth: number;
+  private slideHeight: number;
   private hitboxWidth: number;
   private hitboxHeight: number;
   private hitboxScale: number;
@@ -23,11 +26,13 @@ export class Player {
   private p: p5;
   private normalImage: p5.Image | null;
   private giantImage: p5.Image | null;
+  private slideImage: p5.Image | null;
 
   constructor(
     p: p5, 
     normalImage?: p5.Image | null, 
     giantImage?: p5.Image | null,
+    slideImage?: p5.Image | null,
     baseWidth: number = 120,
     baseHeight: number = 80,
     hitboxScale: number = 0.6
@@ -37,6 +42,8 @@ export class Player {
     this.baseHeight = baseHeight;
     this.giantWidth = baseWidth * 1.5;
     this.giantHeight = baseHeight * 1.5;
+    this.slideWidth = baseWidth * 1.2;
+    this.slideHeight = baseHeight; // 슬라이드 시 높이 반으로
     this.hitboxScale = hitboxScale;
     
     this.width = this.baseWidth;
@@ -50,10 +57,12 @@ export class Player {
     this.gravity = 0.6;
     this.jumpStrength = -16;
     this.isGiant = false;
+    this.isSliding = false;
     this.isOnGround = false;
     this.giantTimer = 0;
     this.normalImage = normalImage || null;
     this.giantImage = giantImage || null;
+    this.slideImage = slideImage || null;
   }
   
   getHitbox() {
@@ -100,12 +109,21 @@ export class Player {
     p.push();
     p.imageMode(p.CORNER);
     
-    const currentImage = this.isGiant ? this.giantImage : this.normalImage;
+    let currentImage: p5.Image | null;
+    if (this.isSliding) {
+      currentImage = this.slideImage;
+    } else if (this.isGiant) {
+      currentImage = this.giantImage;
+    } else {
+      currentImage = this.normalImage;
+    }
     
     if (currentImage && currentImage.width > 0) {
       p.image(currentImage, this.x, this.y, this.width, this.height);
     } else {
-      if (this.isGiant) {
+      if (this.isSliding) {
+        p.fill(0, 200, 255); // 슬라이드: 하늘색
+      } else if (this.isGiant) {
         p.fill(255, 200, 0);
       } else {
         p.fill(255, 0, 0);
@@ -138,6 +156,32 @@ export class Player {
     this.hitboxWidth = this.width * this.hitboxScale;
     this.hitboxHeight = this.height * this.hitboxScale;
     console.log("Player is normal size.");
+  }
+
+  startSlide() {
+    if (this.isOnGround && !this.isSliding && !this.isGiant) {
+      this.isSliding = true;
+      const oldHeight = this.height;
+      this.width = this.slideWidth;
+      this.height = this.slideHeight;
+      this.hitboxWidth = this.width * this.hitboxScale;
+      this.hitboxHeight = this.height * this.hitboxScale;
+      // 바닥에 붙어있도록 Y 위치 조정
+      this.y += (oldHeight - this.height);
+    }
+  }
+
+  endSlide() {
+    if (this.isSliding) {
+      this.isSliding = false;
+      const oldHeight = this.height;
+      this.width = this.baseWidth;
+      this.height = this.baseHeight;
+      this.hitboxWidth = this.width * this.hitboxScale;
+      this.hitboxHeight = this.height * this.hitboxScale;
+      // 바닥에 붙어있도록 Y 위치 조정
+      this.y -= (this.height - oldHeight);
+    }
   }
 
   collidesWith(other: any): boolean {

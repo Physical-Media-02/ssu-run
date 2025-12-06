@@ -83,13 +83,13 @@ export const level1: LevelData = {
     { x: 15000 },
   ],
   powerUps: [
-    { x: 3100, width: 40, height: 40 },
-    { x: 7400, width: 40, height: 40 },
-    { x: 12600, width: 40, height: 40 },
-    { x: 14400, width: 40, height: 40 },
+    { x: 3100 },
+    { x: 7400 },
+    { x: 12600 },
+    { x: 14400 },
   ],
   healthRecoveries: [
-    { x: 4700, width: 35, height: 35 },
-    { x: 9100, y: 380, width: 35, height: 35 },
+    { x: 4700 },
+    { x: 9100 },
   ],
 };

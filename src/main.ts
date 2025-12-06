@@ -28,22 +28,21 @@ import itemPowerUpImg from "./assets/item_power_up.png";
 import itemHealthImg from "./assets/item_health.png";
 import characterImg from "./assets/character.png";
 import characterPowerUpImg from "./assets/character_power_up.png";
+import characterSlideImg from "./assets/character_slide.png";
+import endingWinImg from "./assets/ending_win.png";
+import endingOverImg from "./assets/ending_over.png";
+import mainImg from "./assets/main.png";
+import helpImg from "./assets/help.png";
+import bossImg from "./assets/boss.png";
+import bossRunImg from "./assets/boss_run.png";
+import btnStartImg from "./assets/btn_start.png";
+import btnHelpImg from "./assets/btn_help.png";
+import btnCloseImg from "./assets/btn_close.png";
+import btnHomeImg from "./assets/btn_home.png";
+import btnRetryImg from "./assets/btn_retry.png";
 
 const scoreManager = new ScoreManager();
-const healthManager = new HealthManager(100); // Max health 100
-
-document.getElementById("reset-button")?.addEventListener("click", () => {
-  scoreManager.resetScore();
-  healthManager.resetHealth();
-  // We would also need to reset the game state here, which p.setup() will handle
-});
-document.getElementById("add-button")?.addEventListener("click", () => {
-  scoreManager.updateScore(Math.floor(Math.random() * 11) + 10);
-});
-// Test button for taking damage
-document.getElementById("damage-button")?.addEventListener("click", () => {
-  healthManager.takeDamage(10);
-});
+const healthManager = new HealthManager(100);
 
 interface ImageMap {
   background: p5.Image | null;
@@ -53,12 +52,27 @@ interface ImageMap {
   healthRecovery: p5.Image | null;
   character: p5.Image | null;
   characterPowerUp: p5.Image | null;
+  characterSlide: p5.Image | null;
+  endingWin: p5.Image | null;
+  endingOver: p5.Image | null;
+  main: p5.Image | null;
+  help: p5.Image | null;
+  boss: p5.Image | null;
+  bossRun: p5.Image | null;
+  btnStart: p5.Image | null;
+  btnHelp: p5.Image | null;
+  btnClose: p5.Image | null;
+  btnHome: p5.Image | null;
+  btnRetry: p5.Image | null;
 }
 
 let images: ImageMap;
 let assetsLoaded = false;
 
+type GameScreen = "start" | "help" | "playing" | "won" | "lost";
+
 const sketch = (p: p5) => {
+  let currentScreen: GameScreen = "start";
   let player: Player;
   let obstacleManager: ObstacleManager;
   let powerUpManager: PowerUpManager;
@@ -71,18 +85,24 @@ const sketch = (p: p5) => {
   let nextObstacleIndex = 0;
   let nextPowerUpIndex = 0;
   let nextHealthRecoveryIndex = 0;
-  let gameStatus: "playing" | "won" | "lost" = "playing";
+
+  // Button state
+  let buttons: { x: number; y: number; width: number; height: number; label: string; action: () => void; image?: p5.Image | null }[] = [];
 
   // Scoring state
   let lastScoreTime = 0;
   const scoreInterval = 1000; // 1 second
 
+  // Boss (professor) state
+  let bossVisible = false;
+  let bossX = -200; // 화면 밖에서 시작
+
   function resetGame() {
-    // Player 생성: (p5, 일반이미지, 거대화이미지, 너비, 높이, 히트박스스케일)
-    const playerWidth = 80;
-    const playerHeight = 80;
+    // Player 생성: (p5, 일반이미지, 거대화이미지, 슬라이드이미지, 너비, 높이, 히트박스스케일)
+    const playerWidth = 160;
+    const playerHeight = 100;
     const playerHitboxScale = 0.6; // 히트박스는 표시 크기의 60%
-    player = new Player(p, images.character, images.characterPowerUp, playerWidth, playerHeight, playerHitboxScale);
+    player = new Player(p, images.character, images.characterPowerUp, images.characterSlide, playerWidth, playerHeight, playerHitboxScale);
     obstacleManager = new ObstacleManager(p);
     powerUpManager = new PowerUpManager(p);
     healthRecoveryManager = new HealthRecoveryManager(p);
@@ -99,8 +119,146 @@ const sketch = (p: p5) => {
     scoreManager.resetScore();
     healthManager.resetHealth();
 
+    // Reset boss state
+    bossVisible = false;
+    bossX = -200;
+
     lastScoreTime = p.millis();
-    gameStatus = "playing";
+  }
+
+  function createButton(x: number, y: number, width: number, height: number, label: string, action: () => void, image?: p5.Image | null) {
+    return { x, y, width, height, label, action, image };
+  }
+
+  function drawButton(button: { x: number; y: number; width: number; height: number; label: string; image?: p5.Image | null }) {
+    const isHovered = p.mouseX > button.x && p.mouseX < button.x + button.width &&
+                      p.mouseY > button.y && p.mouseY < button.y + button.height;
+    
+    p.push();
+    if (button.image) {
+      // 이미지 버튼
+      if (isHovered) {
+        p.tint(200); // 호버 시 약간 어둡게
+      }
+      p.image(button.image, button.x, button.y, button.width, button.height);
+    } else {
+      // 텍스트 버튼 (기본)
+      p.fill(isHovered ? 100 : 50);
+      p.stroke(255);
+      p.strokeWeight(3);
+      p.rect(button.x, button.y, button.width, button.height, 10);
+      
+      p.fill(255);
+      p.noStroke();
+      p.textAlign(p.CENTER, p.CENTER);
+      p.textSize(24);
+      p.text(button.label, button.x + button.width / 2, button.y + button.height / 2);
+    }
+    p.pop();
+  }
+
+  function showStartScreen() {
+    p.background(26, 26, 46); // #1a1a2e
+    
+    // 메인 이미지 표시
+    if (images.main) {
+      const imgWidth = 800;
+      const imgHeight = (imgWidth / images.main.width) * images.main.height;
+      p.image(images.main, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+    }
+    
+    buttons = [
+      createButton(p.width / 2 - 240, p.height - 120, 200, 60, "게임 시작", () => {
+        currentScreen = "playing";
+        resetGame();
+      }, images.btnStart),
+      createButton(p.width / 2 + 60, p.height - 120, 200, 60, "도움말", () => {
+        currentScreen = "help";
+      }, images.btnHelp)
+    ];
+    
+    buttons.forEach(drawButton);
+  }
+
+  function showHelpScreen() {
+    p.background(26, 26, 46); // #1a1a2e
+    
+    // 도움말 이미지 표시
+    if (images.help) {
+      const imgWidth = 1000;
+      const imgHeight = (imgWidth / images.help.width) * images.help.height;
+      p.image(images.help, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+    }
+    
+    buttons = [
+      createButton(p.width / 2 - 100, p.height - 110, 200, 60, "돌아가기", () => {
+        currentScreen = "start";
+      }, images.btnClose)
+    ];
+    
+    buttons.forEach(drawButton);
+  }
+
+  function showWinScreen() {
+    p.background(26, 26, 46); // #1a1a2e
+    
+    // 승리 이미지 표시
+    if (images.endingWin) {
+      const imgWidth = 800;
+      const imgHeight = (imgWidth / images.endingWin.width) * images.endingWin.height;
+      p.image(images.endingWin, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+    }
+    
+    p.push();
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(32);
+    p.textStyle(p.NORMAL);
+    p.text(`점수: ${scoreManager.getScore()}`, p.width / 2, p.height - 200);
+    p.pop();
+    
+    buttons = [
+      createButton(p.width / 2 - 220, p.height - 120, 200, 60, "다시 시작", () => {
+        currentScreen = "playing";
+        resetGame();
+      }, images.btnRetry),
+      createButton(p.width / 2 + 20, p.height - 120, 200, 60, "메인 메뉴", () => {
+        currentScreen = "start";
+      }, images.btnHome)
+    ];
+    
+    buttons.forEach(drawButton);
+  }
+
+  function showLostScreen() {
+    p.background(26, 26, 46); // #1a1a2e
+    
+    // 패배 이미지 표시
+    if (images.endingOver) {
+      const imgWidth = 800;
+      const imgHeight = (imgWidth / images.endingOver.width) * images.endingOver.height;
+      p.image(images.endingOver, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+    }
+    
+    p.push();
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.textSize(32);
+    p.textStyle(p.NORMAL);
+    p.text(`점수: ${scoreManager.getScore()}`, p.width / 2, p.height - 200);
+    p.pop();
+    
+    buttons = [
+      createButton(p.width / 2 - 220, p.height - 120, 200, 60, "다시 시작", () => {
+        currentScreen = "playing";
+        resetGame();
+      }, images.btnRetry),
+      createButton(p.width / 2 + 20, p.height - 120, 200, 60, "메인 메뉴", () => {
+        currentScreen = "start";
+      }, images.btnHome)
+    ];
+    
+    buttons.forEach(drawButton);
   }
 
   p.setup = () => {
@@ -113,11 +271,23 @@ const sketch = (p: p5) => {
       powerUp: null,
       healthRecovery: null,
       character: null,
-      characterPowerUp: null
+      characterPowerUp: null,
+      characterSlide: null,
+      endingWin: null,
+      endingOver: null,
+      main: null,
+      help: null,
+      boss: null,
+      bossRun: null,
+      btnStart: null,
+      btnHelp: null,
+      btnClose: null,
+      btnHome: null,
+      btnRetry: null
     }; // 초기화
     
     let loadedCount = 0;
-    const totalImages = 12; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 2
+    const totalImages = 24; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5
     
     const checkAllLoaded = () => {
       loadedCount++;
@@ -201,6 +371,122 @@ const sketch = (p: p5) => {
       console.error('Failed to load character_power_up image:', event);
       checkAllLoaded();
     });
+
+    // 캐릭터 이미지 로드 (슬라이드)
+    p.loadImage(characterSlideImg, (img) => {
+      images.characterSlide = img;
+      console.log(`character_slide size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load character_slide image:', event);
+      checkAllLoaded();
+    });
+
+    // 승리 화면 이미지 로드
+    p.loadImage(endingWinImg, (img) => {
+      images.endingWin = img;
+      console.log(`ending_win size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load ending_win image:', event);
+      checkAllLoaded();
+    });
+
+    // 패배 화면 이미지 로드
+    p.loadImage(endingOverImg, (img) => {
+      images.endingOver = img;
+      console.log(`ending_over size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load ending_over image:', event);
+      checkAllLoaded();
+    });
+
+    // 메인 화면 이미지 로드
+    p.loadImage(mainImg, (img) => {
+      images.main = img;
+      console.log(`main size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load main image:', event);
+      checkAllLoaded();
+    });
+
+    // 도움말 화면 이미지 로드
+    p.loadImage(helpImg, (img) => {
+      images.help = img;
+      console.log(`help size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load help image:', event);
+      checkAllLoaded();
+    });
+
+    // 보스(교수님) 이미지 로드
+    p.loadImage(bossImg, (img) => {
+      images.boss = img;
+      console.log(`boss size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load boss image:', event);
+      checkAllLoaded();
+    });
+
+    // 보스(교수님) 달리기 이미지 로드
+    p.loadImage(bossRunImg, (img) => {
+      images.bossRun = img;
+      console.log(`boss_run size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load boss_run image:', event);
+      checkAllLoaded();
+    });
+
+    // 버튼 이미지 로드
+    p.loadImage(btnStartImg, (img) => {
+      images.btnStart = img;
+      console.log(`btn_start size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load btn_start image:', event);
+      checkAllLoaded();
+    });
+
+    p.loadImage(btnHelpImg, (img) => {
+      images.btnHelp = img;
+      console.log(`btn_help size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load btn_help image:', event);
+      checkAllLoaded();
+    });
+
+    p.loadImage(btnCloseImg, (img) => {
+      images.btnClose = img;
+      console.log(`btn_close size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load btn_close image:', event);
+      checkAllLoaded();
+    });
+
+    p.loadImage(btnHomeImg, (img) => {
+      images.btnHome = img;
+      console.log(`btn_home size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load btn_home image:', event);
+      checkAllLoaded();
+    });
+
+    p.loadImage(btnRetryImg, (img) => {
+      images.btnRetry = img;
+      console.log(`btn_retry size: ${img.width}x${img.height}`);
+      checkAllLoaded();
+    }, (event) => {
+      console.error('Failed to load btn_retry image:', event);
+      checkAllLoaded();
+    });
   };
 
   function drawHealthBar() {
@@ -238,36 +524,35 @@ const sketch = (p: p5) => {
       return;
     }
 
-    // --- GAME STATE CHECKS ---
-    if (gameStatus === "won") {
-      p.background(255);
-      p.fill(0);
-      p.textSize(32);
-      p.textAlign(p.CENTER, p.CENTER);
-      p.text("Level Complete!", p.width / 2, p.height / 2);
-      return; // Stop the draw loop
+    // Screen routing
+    if (currentScreen === "start") {
+      showStartScreen();
+      return;
     }
-    if (gameStatus === "lost") {
-      p.background(100);
-      p.fill(255, 0, 0);
-      p.textSize(32);
-      p.textAlign(p.CENTER, p.CENTER);
-      p.text("Game Over!", p.width / 2, p.height / 2);
-      return; // Stop the draw loop
+    if (currentScreen === "help") {
+      showHelpScreen();
+      return;
+    }
+    if (currentScreen === "won") {
+      showWinScreen();
+      return;
+    }
+    if (currentScreen === "lost") {
+      showLostScreen();
+      return;
     }
     
-    // --- UPDATES ---
+    // --- PLAYING SCREEN ---
+    if (currentScreen !== "playing") return;
 
     world.update();
     player.update(platformManager.platforms);
 
     // Update score over time
-    if (gameStatus === "playing") {
-        const currentTime = p.millis();
-        if (currentTime - lastScoreTime > scoreInterval) {
-        scoreManager.updateScore(1);
-        lastScoreTime = currentTime;
-        }
+    const currentTime = p.millis();
+    if (currentTime - lastScoreTime > scoreInterval) {
+      scoreManager.updateScore(1);
+      lastScoreTime = currentTime;
     }
 
     // Spawn new objects from level data
@@ -298,7 +583,7 @@ const sketch = (p: p5) => {
     if (nextPowerUpIndex < level1.powerUps.length && level1.powerUps[nextPowerUpIndex].x < world.worldX + p.width) {
       const powerUpData = level1.powerUps[nextPowerUpIndex];
       const displayWidth = 120;  // 아이템 표시 크기
-      const displayHeight = 120;
+      const displayHeight = 60;
       const hitboxScale = 0.7;  // 충돌 박스 70%
       powerUpManager.powerUps.push(new PowerUp(p, powerUpData.x, powerUpData.y, displayWidth, displayHeight, images.powerUp, hitboxScale));
       nextPowerUpIndex++;
@@ -306,7 +591,7 @@ const sketch = (p: p5) => {
     if (nextHealthRecoveryIndex < level1.healthRecoveries.length && level1.healthRecoveries[nextHealthRecoveryIndex].x < world.worldX + p.width) {
       const healthRecoveryData = level1.healthRecoveries[nextHealthRecoveryIndex];
       const displayWidth = 120;  // 아이템 표시 크기
-      const displayHeight = 120;
+      const displayHeight = 60;
       const hitboxScale = 0.7;  // 충돌 박스 70%
       healthRecoveryManager.healthRecoveries.push(new HealthRecovery(p, healthRecoveryData.x, healthRecoveryData.y, displayWidth, displayHeight, images.healthRecovery, hitboxScale));
       nextHealthRecoveryIndex++;
@@ -381,6 +666,50 @@ const sketch = (p: p5) => {
     } else {
       p.background(220); // 배경 이미지가 없으면 단색 배경
     }
+
+    // --- BOSS (교수님) UPDATE ---
+    const healthPercent = healthManager.getCurrentHealth() / healthManager.getMaxHealth();
+    const playerX = 100; // 플레이어 고정 X 위치
+    
+    if (healthPercent <= 0.25) {
+      // 체력 25% 이하: 교수님이 바로 뒤로 쫓아옴
+      bossVisible = true;
+      const targetX = playerX - 80; // 플레이어 바로 뒤
+      bossX += (targetX - bossX) * 0.1; // 부드럽게 이동
+    } else if (healthPercent <= 0.5) {
+      // 체력 50% 이하: 교수님 등장 (멀리서)
+      bossVisible = true;
+      const targetX = -50; // 화면 왼쪽 가장자리
+      bossX += (targetX - bossX) * 0.05; // 천천히 이동
+    } else {
+      // 체력 50% 초과: 교수님이 자연스럽게 화면 밖으로 사라짐
+      const targetX = -250; // 화면 완전히 밖으로
+      bossX += (targetX - bossX) * 0.03; // 천천히 밖으로 이동
+      // 완전히 밖으로 나가면 bossVisible을 false로
+      if (bossX <= -240) {
+        bossVisible = false;
+      }
+    }
+
+    // --- BOSS DRAWING ---
+    // bossX가 화면 안에 있으면 그리기 (자연스러운 퇴장을 위해)
+    if (bossVisible || bossX > -240) {
+      const bossWidth = 240;
+      const bossHeight = 120;
+      const bossY = p.height * 0.75 - bossHeight; // 바닥 위
+      
+      let bossImage: p5.Image | null = null;
+      if (healthPercent <= 0.25) {
+        bossImage = images.bossRun; // 달리기 이미지
+      } else {
+        bossImage = images.boss; // 기본 이미지
+      }
+      
+      if (bossImage) {
+        p.image(bossImage, bossX, bossY, bossWidth, bossHeight);
+      }
+    }
+
     player.draw(p);
     obstacleManager.draw();
     powerUpManager.draw();
@@ -391,20 +720,42 @@ const sketch = (p: p5) => {
 
     // --- STATE CHECKS ---
     if (world.worldX >= level1.length) {
-      gameStatus = "won";
+      currentScreen = "won";
     }
-    if (player.isDead()) { // Player falls off screen
-      gameStatus = "lost";
+    if (player.isDead()) {
+      currentScreen = "lost";
     }
-    if (healthManager.isDead()) { // Player runs out of health
-        gameStatus = "lost";
+    if (healthManager.isDead()) {
+      currentScreen = "lost";
     }
   };
 
   p.keyPressed = () => {
-    if (p.keyCode === 32) { // 32 is the keycode for SPACE
-      player.jump();
+    if (currentScreen === "playing") {
+      // UP_ARROW = 38, DOWN_ARROW = 40
+      if (p.keyCode === 38) {
+        player.jump();
+      } else if (p.keyCode === 40) {
+        player.startSlide();
+      }
     }
+  };
+
+  p.keyReleased = () => {
+    if (currentScreen === "playing") {
+      if (p.keyCode === 40) {
+        player.endSlide();
+      }
+    }
+  };
+
+  p.mousePressed = () => {
+    buttons.forEach(button => {
+      if (p.mouseX > button.x && p.mouseX < button.x + button.width &&
+          p.mouseY > button.y && p.mouseY < button.y + button.height) {
+        button.action();
+      }
+    });
   };
 };
 
