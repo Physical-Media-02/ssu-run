@@ -47,6 +47,86 @@ interface ImageMap {
 let images: ImageMap;
 let assetsLoaded = false;
 
+// ===== 오디오 시스템 =====
+interface AudioMap {
+  bgmHome: HTMLAudioElement | null;
+  bgmGame: HTMLAudioElement | null;
+  bgmWin: HTMLAudioElement | null;
+  bgmOver1: HTMLAudioElement | null;
+  bgmOver2: HTMLAudioElement | null;
+  sfxJump: HTMLAudioElement | null;
+  sfxHealth: HTMLAudioElement | null;
+  sfxPowerUp: HTMLAudioElement | null;
+  sfxObstacle: HTMLAudioElement | null;
+}
+
+let sounds: AudioMap = {
+  bgmHome: null,
+  bgmGame: null,
+  bgmWin: null,
+  bgmOver1: null,
+  bgmOver2: null,
+  sfxJump: null,
+  sfxHealth: null,
+  sfxPowerUp: null,
+  sfxObstacle: null,
+};
+
+let currentBgm: HTMLAudioElement | null = null;
+let lastScreen: GameScreen | null = null;
+let audioInitialized = false; // 사용자 첫 상호작용 후 오디오 활성화
+
+function loadSound(src: string): HTMLAudioElement {
+  const audio = new Audio(src);
+  audio.preload = "auto";
+  return audio;
+}
+
+function playBgm(audio: HTMLAudioElement | null, loop: boolean = true) {
+  if (!audio) return;
+  if (currentBgm === audio && !audio.paused) return; // 같은 음악이 이미 재생 중이면 스킵
+  
+  stopCurrentBgm();
+  audio.loop = loop;
+  audio.currentTime = 0;
+  audio.play().catch(e => console.log("BGM play failed:", e));
+  currentBgm = audio;
+}
+
+function stopCurrentBgm() {
+  if (currentBgm) {
+    currentBgm.pause();
+    currentBgm.currentTime = 0;
+  }
+}
+
+function playSfx(audio: HTMLAudioElement | null) {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.play().catch(e => console.log("SFX play failed:", e));
+}
+
+// 게임 오버 시퀀스 재생 (1 끝나면 2 재생)
+function playGameOverSequence() {
+  if (!sounds.bgmOver1 || !sounds.bgmOver2) return;
+  
+  stopCurrentBgm();
+  sounds.bgmOver1.loop = false;
+  sounds.bgmOver1.currentTime = 0;
+  
+  sounds.bgmOver1.onended = () => {
+    if (sounds.bgmOver2) {
+      sounds.bgmOver2.loop = true;
+      sounds.bgmOver2.currentTime = 0;
+      sounds.bgmOver2.play().catch(e => console.log("BGM Over2 play failed:", e));
+      currentBgm = sounds.bgmOver2;
+    }
+  };
+  
+  sounds.bgmOver1.play().catch(e => console.log("BGM Over1 play failed:", e));
+  currentBgm = sounds.bgmOver1;
+}
+
 type GameScreen = "start" | "help" | "playing" | "won" | "lost";
 
 const sketch = (p: p5) => {
@@ -423,6 +503,17 @@ const sketch = (p: p5) => {
       endingPoint: null,
     }; // 초기화
 
+    // ===== 오디오 파일 로드 =====
+    sounds.bgmHome = loadSound(`${ASSET_PATH}/home.mp3`);
+    sounds.bgmGame = loadSound(`${ASSET_PATH}/game.mp3`);
+    sounds.bgmWin = loadSound(`${ASSET_PATH}/ending_win.mp3`);
+    sounds.bgmOver1 = loadSound(`${ASSET_PATH}/ending_over_1.mp3`);
+    sounds.bgmOver2 = loadSound(`${ASSET_PATH}/ending_over_2.mp3`);
+    sounds.sfxJump = loadSound(`${ASSET_PATH}/character_jump.wav`);
+    sounds.sfxHealth = loadSound(`${ASSET_PATH}/item_health.mp3`);
+    sounds.sfxPowerUp = loadSound(`${ASSET_PATH}/item_power_up.wav`);
+    sounds.sfxObstacle = loadSound(`${ASSET_PATH}/obstacle_attack.wav`);
+
     let loadedCount = 0;
     const totalImages = 25; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1
 
@@ -764,6 +855,26 @@ const sketch = (p: p5) => {
       return;
     }
 
+    // ===== 화면 전환 시 배경음악 처리 =====
+    if (audioInitialized && currentScreen !== lastScreen) {
+      if (currentScreen === "start" || currentScreen === "help") {
+        // 홈/도움말 화면: home.mp3 (서로 왔다갔다해도 재시작 안 함)
+        if (lastScreen !== "start" && lastScreen !== "help") {
+          playBgm(sounds.bgmHome, true);
+        }
+      } else if (currentScreen === "playing") {
+        // 게임 플레이: game.mp3
+        playBgm(sounds.bgmGame, true);
+      } else if (currentScreen === "won") {
+        // 승리: ending_win.mp3
+        playBgm(sounds.bgmWin, true);
+      } else if (currentScreen === "lost") {
+        // 패배: ending_over_1.mp3 -> ending_over_2.mp3 순차 재생
+        playGameOverSequence();
+      }
+      lastScreen = currentScreen;
+    }
+
     // Screen routing
     if (currentScreen === "start") {
       showStartScreen();
@@ -938,9 +1049,11 @@ const sketch = (p: p5) => {
       if (player.collidesWith(obstacle)) {
         if (player.isGiant) {
           scoreManager.updateScore(100);
+          playSfx(sounds.sfxObstacle); // 장애물 부딪힘 효과음
           obstacleManager.obstacles.splice(i, 1);
         } else {
           healthManager.takeDamage(25); // Take 25 damage from obstacle
+          playSfx(sounds.sfxObstacle); // 장애물 부딪힘 효과음
           obstacleManager.obstacles.splice(i, 1); // Remove obstacle after collision
         }
       } else if (obstacle.isOffscreen()) {
@@ -951,6 +1064,7 @@ const sketch = (p: p5) => {
       const powerUp = powerUpManager.powerUps[i];
       if (player.collidesWith(powerUp)) {
         player.activateGiant(300);
+        playSfx(sounds.sfxPowerUp); // 파워업 획득 효과음
         powerUpManager.powerUps.splice(i, 1);
       } else if (powerUp.isOffscreen()) {
         powerUpManager.powerUps.splice(i, 1);
@@ -964,6 +1078,7 @@ const sketch = (p: p5) => {
       const healthRecovery = healthRecoveryManager.healthRecoveries[i];
       if (player.collidesWith(healthRecovery)) {
         healthManager.heal(25); // Heal 25
+        playSfx(sounds.sfxHealth); // 체력 회복 효과음
         healthRecoveryManager.healthRecoveries.splice(i, 1);
       } else if (healthRecovery.isOffscreen()) {
         healthRecoveryManager.healthRecoveries.splice(i, 1);
@@ -1131,6 +1246,9 @@ const sketch = (p: p5) => {
     if (currentScreen === "playing") {
       // UP_ARROW = 38, DOWN_ARROW = 40
       if (p.keyCode === 38) {
+        if (player.isOnGround) {
+          playSfx(sounds.sfxJump); // 점프 효과음
+        }
         player.jump();
       } else if (p.keyCode === 40) {
         isDownKeyPressed = true;
@@ -1149,6 +1267,15 @@ const sketch = (p: p5) => {
   };
 
   p.mousePressed = () => {
+    // 첫 클릭 시 오디오 활성화 (브라우저 자동재생 정책 우회)
+    if (!audioInitialized && assetsLoaded) {
+      audioInitialized = true;
+      // 현재 화면에 맞는 음악 재생
+      if (currentScreen === "start" || currentScreen === "help") {
+        playBgm(sounds.bgmHome, true);
+      }
+    }
+
     buttons.forEach((button) => {
       if (
         p.mouseX > button.x &&
