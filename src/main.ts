@@ -65,7 +65,15 @@ const sketch = (p: p5) => {
   let nextHealthRecoveryIndex = 0;
 
   // Button state
-  let buttons: { x: number; y: number; width: number; height: number; label: string; action: () => void; image?: p5.Image | null }[] = [];
+  let buttons: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label: string;
+    action: () => void;
+    image?: p5.Image | null;
+  }[] = [];
 
   // Scoring state
   let lastScoreTime = 0;
@@ -83,24 +91,35 @@ const sketch = (p: p5) => {
   let micDataArray: Uint8Array<ArrayBuffer> | null = null;
   const MIC_THRESHOLD = 50; // 데시벨 임계값 (0-255 범위, 조절 가능)
 
+  // Input state (입력 상태 추적)
+  let isDownKeyPressed = false;
+
   function resetGame() {
     // Player 생성: (p5, 일반이미지, 거대화이미지, 슬라이드이미지, 너비, 높이, 히트박스스케일)
     const playerWidth = 160;
     const playerHeight = 100;
     const playerHitboxScale = 0.6; // 히트박스는 표시 크기의 60%
-    player = new Player(p, images.character, images.characterPowerUp, images.characterSlide, playerWidth, playerHeight, playerHitboxScale);
+    player = new Player(
+      p,
+      images.character,
+      images.characterPowerUp,
+      images.characterSlide,
+      playerWidth,
+      playerHeight,
+      playerHitboxScale
+    );
     obstacleManager = new ObstacleManager(p);
     powerUpManager = new PowerUpManager(p);
     healthRecoveryManager = new HealthRecoveryManager(p);
     platformManager = new PlatformManager(p);
     world = new World();
-    
+
     // Reset level progress
     nextPlatformIndex = 0;
     nextObstacleIndex = 0;
     nextPowerUpIndex = 0;
     nextHealthRecoveryIndex = 0;
-    
+
     // Reset managers
     scoreManager.resetScore();
     healthManager.resetHealth();
@@ -120,11 +139,11 @@ const sketch = (p: p5) => {
       analyser = audioContext.createAnalyser();
       microphone = audioContext.createMediaStreamSource(stream);
       microphone.connect(analyser);
-      
+
       analyser.fftSize = 256;
       const bufferLength = analyser.frequencyBinCount;
       micDataArray = new Uint8Array(bufferLength);
-      
+
       micEnabled = true;
       console.log("마이크 초기화 성공!");
     } catch (err) {
@@ -136,9 +155,9 @@ const sketch = (p: p5) => {
   // 마이크 볼륨 측정 함수 (0-255 범위)
   function getMicVolume(): number {
     if (!analyser || !micDataArray) return 0;
-    
+
     analyser.getByteFrequencyData(micDataArray);
-    
+
     // 평균 볼륨 계산
     let sum = 0;
     for (let i = 0; i < micDataArray.length; i++) {
@@ -147,14 +166,32 @@ const sketch = (p: p5) => {
     return sum / micDataArray.length;
   }
 
-  function createButton(x: number, y: number, width: number, height: number, label: string, action: () => void, image?: p5.Image | null) {
+  function createButton(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    action: () => void,
+    image?: p5.Image | null
+  ) {
     return { x, y, width, height, label, action, image };
   }
 
-  function drawButton(button: { x: number; y: number; width: number; height: number; label: string; image?: p5.Image | null }) {
-    const isHovered = p.mouseX > button.x && p.mouseX < button.x + button.width &&
-                      p.mouseY > button.y && p.mouseY < button.y + button.height;
-    
+  function drawButton(button: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    label: string;
+    image?: p5.Image | null;
+  }) {
+    const isHovered =
+      p.mouseX > button.x &&
+      p.mouseX < button.x + button.width &&
+      p.mouseY > button.y &&
+      p.mouseY < button.y + button.height;
+
     p.push();
     if (button.image) {
       // 이미지 버튼
@@ -168,72 +205,107 @@ const sketch = (p: p5) => {
       p.stroke(255);
       p.strokeWeight(3);
       p.rect(button.x, button.y, button.width, button.height, 10);
-      
+
       p.fill(255);
       p.noStroke();
       p.textAlign(p.CENTER, p.CENTER);
       p.textSize(24);
-      p.text(button.label, button.x + button.width / 2, button.y + button.height / 2);
+      p.text(
+        button.label,
+        button.x + button.width / 2,
+        button.y + button.height / 2
+      );
     }
     p.pop();
   }
 
   function showStartScreen() {
     p.background(26, 26, 46); // #1a1a2e
-    
+
     // 메인 이미지 표시
     if (images.main) {
       const imgWidth = 800;
       const imgHeight = (imgWidth / images.main.width) * images.main.height;
       p.image(images.main, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
     }
-    
+
     buttons = [
-      createButton(p.width / 2 - 240, p.height - 120, 200, 60, "게임 시작", () => {
-        currentScreen = "playing";
-        resetGame();
-        // 마이크 초기화 (첫 번째 게임 시작 시)
-        if (!micEnabled) {
-          initMicrophone();
-        }
-      }, images.btnStart),
-      createButton(p.width / 2 + 60, p.height - 120, 200, 60, "도움말", () => {
-        currentScreen = "help";
-      }, images.btnHelp)
+      createButton(
+        p.width / 2 - 240,
+        p.height - 120,
+        200,
+        60,
+        "게임 시작",
+        () => {
+          currentScreen = "playing";
+          resetGame();
+          // 마이크 초기화 (첫 번째 게임 시작 시)
+          if (!micEnabled) {
+            initMicrophone();
+          }
+        },
+        images.btnStart
+      ),
+      createButton(
+        p.width / 2 + 60,
+        p.height - 120,
+        200,
+        60,
+        "도움말",
+        () => {
+          currentScreen = "help";
+        },
+        images.btnHelp
+      ),
     ];
-    
+
     buttons.forEach(drawButton);
   }
 
   function showHelpScreen() {
     p.background(26, 26, 46); // #1a1a2e
-    
+
     // 도움말 이미지 표시
     if (images.help) {
       const imgWidth = 1000;
       const imgHeight = (imgWidth / images.help.width) * images.help.height;
       p.image(images.help, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
     }
-    
+
     buttons = [
-      createButton(p.width / 2 - 100, p.height - 110, 200, 60, "돌아가기", () => {
-        currentScreen = "start";
-      }, images.btnClose)
+      createButton(
+        p.width / 2 - 100,
+        p.height - 110,
+        200,
+        60,
+        "돌아가기",
+        () => {
+          currentScreen = "start";
+        },
+        images.btnClose
+      ),
     ];
-    
+
     buttons.forEach(drawButton);
   }
 
   function showWinScreen() {
     p.background(26, 26, 46); // #1a1a2e
-    
+
     // 승리 이미지 표시
     if (images.endingWin) {
       const imgWidth = 800;
-      const imgHeight = (imgWidth / images.endingWin.width) * images.endingWin.height;
-      p.image(images.endingWin, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+      const imgHeight =
+        (imgWidth / images.endingWin.width) * images.endingWin.height;
+      p.image(
+        images.endingWin,
+        p.width / 2 - imgWidth / 2,
+        50,
+        imgWidth,
+        imgHeight
+      );
     }
-    
+
     p.push();
     p.fill(255);
     p.textAlign(p.CENTER, p.CENTER);
@@ -241,30 +313,53 @@ const sketch = (p: p5) => {
     p.textStyle(p.NORMAL);
     p.text(`점수: ${scoreManager.getScore()}`, p.width / 2, p.height - 200);
     p.pop();
-    
+
     buttons = [
-      createButton(p.width / 2 - 220, p.height - 120, 200, 60, "다시 시작", () => {
-        currentScreen = "playing";
-        resetGame();
-      }, images.btnRetry),
-      createButton(p.width / 2 + 20, p.height - 120, 200, 60, "메인 메뉴", () => {
-        currentScreen = "start";
-      }, images.btnHome)
+      createButton(
+        p.width / 2 - 220,
+        p.height - 120,
+        200,
+        60,
+        "다시 시작",
+        () => {
+          currentScreen = "playing";
+          resetGame();
+        },
+        images.btnRetry
+      ),
+      createButton(
+        p.width / 2 + 20,
+        p.height - 120,
+        200,
+        60,
+        "메인 메뉴",
+        () => {
+          currentScreen = "start";
+        },
+        images.btnHome
+      ),
     ];
-    
+
     buttons.forEach(drawButton);
   }
 
   function showLostScreen() {
     p.background(26, 26, 46); // #1a1a2e
-    
+
     // 패배 이미지 표시
     if (images.endingOver) {
       const imgWidth = 800;
-      const imgHeight = (imgWidth / images.endingOver.width) * images.endingOver.height;
-      p.image(images.endingOver, p.width / 2 - imgWidth / 2, 50, imgWidth, imgHeight);
+      const imgHeight =
+        (imgWidth / images.endingOver.width) * images.endingOver.height;
+      p.image(
+        images.endingOver,
+        p.width / 2 - imgWidth / 2,
+        50,
+        imgWidth,
+        imgHeight
+      );
     }
-    
+
     p.push();
     p.fill(255);
     p.textAlign(p.CENTER, p.CENTER);
@@ -272,24 +367,40 @@ const sketch = (p: p5) => {
     p.textStyle(p.NORMAL);
     p.text(`점수: ${scoreManager.getScore()}`, p.width / 2, p.height - 200);
     p.pop();
-    
+
     buttons = [
-      createButton(p.width / 2 - 220, p.height - 120, 200, 60, "다시 시작", () => {
-        currentScreen = "playing";
-        resetGame();
-      }, images.btnRetry),
-      createButton(p.width / 2 + 20, p.height - 120, 200, 60, "메인 메뉴", () => {
-        currentScreen = "start";
-      }, images.btnHome)
+      createButton(
+        p.width / 2 - 220,
+        p.height - 120,
+        200,
+        60,
+        "다시 시작",
+        () => {
+          currentScreen = "playing";
+          resetGame();
+        },
+        images.btnRetry
+      ),
+      createButton(
+        p.width / 2 + 20,
+        p.height - 120,
+        200,
+        60,
+        "메인 메뉴",
+        () => {
+          currentScreen = "start";
+        },
+        images.btnHome
+      ),
     ];
-    
+
     buttons.forEach(drawButton);
   }
 
   p.setup = () => {
     p.createCanvas(800, 600);
-    
-    images = { 
+
+    images = {
       background: null,
       obstacleBottom: [],
       obstacleTop: [],
@@ -309,12 +420,12 @@ const sketch = (p: p5) => {
       btnClose: null,
       btnHome: null,
       btnRetry: null,
-      endingPoint: null
+      endingPoint: null,
     }; // 초기화
-    
+
     let loadedCount = 0;
     const totalImages = 25; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1
-    
+
     const checkAllLoaded = () => {
       loadedCount++;
       if (loadedCount === totalImages) {
@@ -322,215 +433,300 @@ const sketch = (p: p5) => {
         resetGame();
       }
     };
-    
+
     // 배경 이미지 로드
-    p.loadImage(`${ASSET_PATH}/background.png`, (img) => {
-      images.background = img;
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load background image:', event);
-      checkAllLoaded();
-    });
-    
+    p.loadImage(
+      `${ASSET_PATH}/background.png`,
+      (img) => {
+        images.background = img;
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load background image:", event);
+        checkAllLoaded();
+      }
+    );
+
     // 하단 장애물 이미지 로드 (4개)
     const bottomImages = [
       `${ASSET_PATH}/obstacle_bottom_1.png`,
       `${ASSET_PATH}/obstacle_bottom_2.png`,
       `${ASSET_PATH}/obstacle_bottom_3.png`,
-      `${ASSET_PATH}/obstacle_bottom_4.png`
+      `${ASSET_PATH}/obstacle_bottom_4.png`,
     ];
     bottomImages.forEach((imgPath, i) => {
-      p.loadImage(imgPath, (img) => {
-        images.obstacleBottom.push(img);
-        console.log(`obstacle_bottom_${i + 1} size: ${img.width}x${img.height}`);
-        checkAllLoaded();
-      }, (event) => {
-        console.error(`Failed to load obstacle_bottom_${i + 1} image:`, event);
-        checkAllLoaded();
-      });
+      p.loadImage(
+        imgPath,
+        (img) => {
+          images.obstacleBottom.push(img);
+          console.log(
+            `obstacle_bottom_${i + 1} size: ${img.width}x${img.height}`
+          );
+          checkAllLoaded();
+        },
+        (event) => {
+          console.error(
+            `Failed to load obstacle_bottom_${i + 1} image:`,
+            event
+          );
+          checkAllLoaded();
+        }
+      );
     });
-    
+
     // 상단 장애물 이미지 로드 (3개)
     const topImages = [
       `${ASSET_PATH}/obstacle_top_1.png`,
       `${ASSET_PATH}/obstacle_top_2.png`,
-      `${ASSET_PATH}/obstacle_top_3.png`
+      `${ASSET_PATH}/obstacle_top_3.png`,
     ];
     topImages.forEach((imgPath, i) => {
-      p.loadImage(imgPath, (img) => {
-        images.obstacleTop.push(img);
-        console.log(`obstacle_top_${i + 1} size: ${img.width}x${img.height}`);
-        checkAllLoaded();
-      }, (event) => {
-        console.error(`Failed to load obstacle_top_${i + 1} image:`, event);
-        checkAllLoaded();
-      });
+      p.loadImage(
+        imgPath,
+        (img) => {
+          images.obstacleTop.push(img);
+          console.log(`obstacle_top_${i + 1} size: ${img.width}x${img.height}`);
+          checkAllLoaded();
+        },
+        (event) => {
+          console.error(`Failed to load obstacle_top_${i + 1} image:`, event);
+          checkAllLoaded();
+        }
+      );
     });
-    
+
     // 파워업 아이템 이미지 로드
-    p.loadImage(`${ASSET_PATH}/item_power_up.png`, (img) => {
-      images.powerUp = img;
-      console.log(`power_up size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load power_up image:', event);
-      checkAllLoaded();
-    });
-    
+    p.loadImage(
+      `${ASSET_PATH}/item_power_up.png`,
+      (img) => {
+        images.powerUp = img;
+        console.log(`power_up size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load power_up image:", event);
+        checkAllLoaded();
+      }
+    );
+
     // 체력 회복 아이템 이미지 로드
-    p.loadImage(`${ASSET_PATH}/item_health.png`, (img) => {
-      images.healthRecovery = img;
-      console.log(`health_recovery size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load health_recovery image:', event);
-      checkAllLoaded();
-    });
-    
+    p.loadImage(
+      `${ASSET_PATH}/item_health.png`,
+      (img) => {
+        images.healthRecovery = img;
+        console.log(`health_recovery size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load health_recovery image:", event);
+        checkAllLoaded();
+      }
+    );
+
     // 캐릭터 이미지 로드 (일반)
-    p.loadImage(`${ASSET_PATH}/character.png`, (img) => {
-      images.character = img;
-      console.log(`character size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load character image:', event);
-      checkAllLoaded();
-    });
-    
+    p.loadImage(
+      `${ASSET_PATH}/character.png`,
+      (img) => {
+        images.character = img;
+        console.log(`character size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load character image:", event);
+        checkAllLoaded();
+      }
+    );
+
     // 캐릭터 이미지 로드 (거대화)
-    p.loadImage(`${ASSET_PATH}/character_power_up.png`, (img) => {
-      images.characterPowerUp = img;
-      console.log(`character_power_up size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load character_power_up image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/character_power_up.png`,
+      (img) => {
+        images.characterPowerUp = img;
+        console.log(`character_power_up size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load character_power_up image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 캐릭터 이미지 로드 (슬라이드)
-    p.loadImage(`${ASSET_PATH}/character_slide.png`, (img) => {
-      images.characterSlide = img;
-      console.log(`character_slide size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load character_slide image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/character_slide.png`,
+      (img) => {
+        images.characterSlide = img;
+        console.log(`character_slide size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load character_slide image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 승리 화면 이미지 로드
-    p.loadImage(`${ASSET_PATH}/ending_win.png`, (img) => {
-      images.endingWin = img;
-      console.log(`ending_win size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load ending_win image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/ending_win.png`,
+      (img) => {
+        images.endingWin = img;
+        console.log(`ending_win size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load ending_win image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 패배 화면 이미지 로드
-    p.loadImage(`${ASSET_PATH}/ending_over.png`, (img) => {
-      images.endingOver = img;
-      console.log(`ending_over size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load ending_over image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/ending_over.png`,
+      (img) => {
+        images.endingOver = img;
+        console.log(`ending_over size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load ending_over image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 메인 화면 이미지 로드
-    p.loadImage(`${ASSET_PATH}/main.png`, (img) => {
-      images.main = img;
-      console.log(`main size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load main image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/main.png`,
+      (img) => {
+        images.main = img;
+        console.log(`main size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load main image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 도움말 화면 이미지 로드
-    p.loadImage(`${ASSET_PATH}/help.png`, (img) => {
-      images.help = img;
-      console.log(`help size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load help image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/help.png`,
+      (img) => {
+        images.help = img;
+        console.log(`help size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load help image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 보스(교수님) 이미지 로드
-    p.loadImage(`${ASSET_PATH}/boss.png`, (img) => {
-      images.boss = img;
-      console.log(`boss size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load boss image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/boss.png`,
+      (img) => {
+        images.boss = img;
+        console.log(`boss size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load boss image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 보스(교수님) 달리기 이미지 로드
-    p.loadImage(`${ASSET_PATH}/boss_run.png`, (img) => {
-      images.bossRun = img;
-      console.log(`boss_run size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load boss_run image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/boss_run.png`,
+      (img) => {
+        images.bossRun = img;
+        console.log(`boss_run size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load boss_run image:", event);
+        checkAllLoaded();
+      }
+    );
 
     // 버튼 이미지 로드
-    p.loadImage(`${ASSET_PATH}/btn_start.png`, (img) => {
-      images.btnStart = img;
-      console.log(`btn_start size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load btn_start image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/btn_start.png`,
+      (img) => {
+        images.btnStart = img;
+        console.log(`btn_start size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load btn_start image:", event);
+        checkAllLoaded();
+      }
+    );
 
-    p.loadImage(`${ASSET_PATH}/btn_help.png`, (img) => {
-      images.btnHelp = img;
-      console.log(`btn_help size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load btn_help image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/btn_help.png`,
+      (img) => {
+        images.btnHelp = img;
+        console.log(`btn_help size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load btn_help image:", event);
+        checkAllLoaded();
+      }
+    );
 
-    p.loadImage(`${ASSET_PATH}/btn_close.png`, (img) => {
-      images.btnClose = img;
-      console.log(`btn_close size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load btn_close image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/btn_close.png`,
+      (img) => {
+        images.btnClose = img;
+        console.log(`btn_close size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load btn_close image:", event);
+        checkAllLoaded();
+      }
+    );
 
-    p.loadImage(`${ASSET_PATH}/btn_home.png`, (img) => {
-      images.btnHome = img;
-      console.log(`btn_home size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load btn_home image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/btn_home.png`,
+      (img) => {
+        images.btnHome = img;
+        console.log(`btn_home size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load btn_home image:", event);
+        checkAllLoaded();
+      }
+    );
 
-    p.loadImage(`${ASSET_PATH}/btn_retry.png`, (img) => {
-      images.btnRetry = img;
-      console.log(`btn_retry size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load btn_retry image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/btn_retry.png`,
+      (img) => {
+        images.btnRetry = img;
+        console.log(`btn_retry size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load btn_retry image:", event);
+        checkAllLoaded();
+      }
+    );
 
-    p.loadImage(`${ASSET_PATH}/ending_point.png`, (img) => {
-      images.endingPoint = img;
-      console.log(`ending_point size: ${img.width}x${img.height}`);
-      checkAllLoaded();
-    }, (event) => {
-      console.error('Failed to load ending_point image:', event);
-      checkAllLoaded();
-    });
+    p.loadImage(
+      `${ASSET_PATH}/ending_point.png`,
+      (img) => {
+        images.endingPoint = img;
+        console.log(`ending_point size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load ending_point image:", event);
+        checkAllLoaded();
+      }
+    );
   };
 
   function drawHealthBar() {
@@ -541,7 +737,7 @@ const sketch = (p: p5) => {
     p.push();
     p.stroke(0);
     p.strokeWeight(2);
-    
+
     // Health bar background
     p.fill(100);
     p.rect(20, 20, 200, 20);
@@ -549,7 +745,7 @@ const sketch = (p: p5) => {
     // Current health
     p.fill(255, 0, 0); // Red
     p.rect(20, 20, healthBarWidth, 20);
-    
+
     // Health text
     p.noStroke();
     p.fill(255);
@@ -564,7 +760,7 @@ const sketch = (p: p5) => {
       p.background(100);
       p.fill(255);
       p.textAlign(p.CENTER, p.CENTER);
-      p.text("Loading...", p.width/2, p.height/2);
+      p.text("Loading...", p.width / 2, p.height / 2);
       return;
     }
 
@@ -585,12 +781,22 @@ const sketch = (p: p5) => {
       showLostScreen();
       return;
     }
-    
+
     // --- PLAYING SCREEN ---
     if (currentScreen !== "playing") return;
 
     world.update();
     player.update(platformManager.platforms);
+
+    // 키가 눌려있고 착지했을 때 즉시 슬라이딩 시작 (점프 후 착지 시 즉시 반응)
+    if (
+      isDownKeyPressed &&
+      player.isOnGround &&
+      !player.isSliding &&
+      !player.isGiant
+    ) {
+      player.startSlide();
+    }
 
     // --- MICROPHONE POWER-UP (마이크 파워업) ---
     if (micEnabled) {
@@ -614,44 +820,100 @@ const sketch = (p: p5) => {
     }
 
     // Spawn new objects from level data
-    if (nextPlatformIndex < level1.platforms.length && level1.platforms[nextPlatformIndex].x < world.worldX + p.width) {
+    if (
+      nextPlatformIndex < level1.platforms.length &&
+      level1.platforms[nextPlatformIndex].x < world.worldX + p.width
+    ) {
       const platData = level1.platforms[nextPlatformIndex];
-      platformManager.platforms.push(new Platform(p, platData.x, platData.width));
+      platformManager.platforms.push(
+        new Platform(p, platData.x, platData.width)
+      );
       nextPlatformIndex++;
     }
-    if (nextObstacleIndex < level1.obstacles.length && level1.obstacles[nextObstacleIndex].x < world.worldX + p.width) {
+    if (
+      nextObstacleIndex < level1.obstacles.length &&
+      level1.obstacles[nextObstacleIndex].x < world.worldX + p.width
+    ) {
       const obstacleData = level1.obstacles[nextObstacleIndex];
-      const isTop = obstacleData.y !== undefined && obstacleData.y < p.height * 0.75 - 100;
+      const isTop =
+        obstacleData.y !== undefined && obstacleData.y < p.height * 0.75 - 100;
       const obstacleImages = isTop ? images.obstacleTop : images.obstacleBottom;
-      
+
       // 이미지 배열이 비어있지 않은지 확인
       if (obstacleImages.length > 0) {
-        const randomImage = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+        const randomImage =
+          obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
         // 이미지 표시 크기를 키우고, 충돌 박스는 60%로 설정
-        const displayWidth = 120;  // 이미지 표시 크기 (크게)
+        const displayWidth = 120; // 이미지 표시 크기 (크게)
         const displayHeight = 100;
-        const hitboxScale = 0.2;  // 충돌 박스는 20% 크기 (작게)
-        obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x, obstacleData.y, displayWidth, displayHeight, randomImage, hitboxScale));
+        const hitboxScale = 0.5; // 충돌 박스는 50% 크기 (작게)
+        obstacleManager.obstacles.push(
+          new Obstacle(
+            p,
+            obstacleData.x,
+            obstacleData.y,
+            displayWidth,
+            displayHeight,
+            randomImage,
+            hitboxScale
+          )
+        );
       } else {
         // 이미지가 아직 로드되지 않았으면 기본 크기로 생성
-        obstacleManager.obstacles.push(new Obstacle(p, obstacleData.x, obstacleData.y, obstacleData.width, obstacleData.height));
+        obstacleManager.obstacles.push(
+          new Obstacle(
+            p,
+            obstacleData.x,
+            obstacleData.y,
+            obstacleData.width,
+            obstacleData.height
+          )
+        );
       }
       nextObstacleIndex++;
     }
-    if (nextPowerUpIndex < level1.powerUps.length && level1.powerUps[nextPowerUpIndex].x < world.worldX + p.width) {
+    if (
+      nextPowerUpIndex < level1.powerUps.length &&
+      level1.powerUps[nextPowerUpIndex].x < world.worldX + p.width
+    ) {
       const powerUpData = level1.powerUps[nextPowerUpIndex];
-      const displayWidth = 120;  // 아이템 표시 크기
+      const displayWidth = 120; // 아이템 표시 크기
       const displayHeight = 60;
-      const hitboxScale = 0.7;  // 충돌 박스 70%
-      powerUpManager.powerUps.push(new PowerUp(p, powerUpData.x, powerUpData.y, displayWidth, displayHeight, images.powerUp, hitboxScale));
+      const hitboxScale = 0.7; // 충돌 박스 70%
+      powerUpManager.powerUps.push(
+        new PowerUp(
+          p,
+          powerUpData.x,
+          powerUpData.y,
+          displayWidth,
+          displayHeight,
+          images.powerUp,
+          hitboxScale
+        )
+      );
       nextPowerUpIndex++;
     }
-    if (nextHealthRecoveryIndex < level1.healthRecoveries.length && level1.healthRecoveries[nextHealthRecoveryIndex].x < world.worldX + p.width) {
-      const healthRecoveryData = level1.healthRecoveries[nextHealthRecoveryIndex];
-      const displayWidth = 120;  // 아이템 표시 크기
+    if (
+      nextHealthRecoveryIndex < level1.healthRecoveries.length &&
+      level1.healthRecoveries[nextHealthRecoveryIndex].x <
+        world.worldX + p.width
+    ) {
+      const healthRecoveryData =
+        level1.healthRecoveries[nextHealthRecoveryIndex];
+      const displayWidth = 120; // 아이템 표시 크기
       const displayHeight = 60;
-      const hitboxScale = 0.7;  // 충돌 박스 70%
-      healthRecoveryManager.healthRecoveries.push(new HealthRecovery(p, healthRecoveryData.x, healthRecoveryData.y, displayWidth, displayHeight, images.healthRecovery, hitboxScale));
+      const hitboxScale = 0.7; // 충돌 박스 70%
+      healthRecoveryManager.healthRecoveries.push(
+        new HealthRecovery(
+          p,
+          healthRecoveryData.x,
+          healthRecoveryData.y,
+          displayWidth,
+          displayHeight,
+          images.healthRecovery,
+          hitboxScale
+        )
+      );
       nextHealthRecoveryIndex++;
     }
 
@@ -694,7 +956,11 @@ const sketch = (p: p5) => {
         powerUpManager.powerUps.splice(i, 1);
       }
     }
-    for (let i = healthRecoveryManager.healthRecoveries.length - 1; i >= 0; i--) {
+    for (
+      let i = healthRecoveryManager.healthRecoveries.length - 1;
+      i >= 0;
+      i--
+    ) {
       const healthRecovery = healthRecoveryManager.healthRecoveries[i];
       if (player.collidesWith(healthRecovery)) {
         healthManager.heal(25); // Heal 25
@@ -704,11 +970,10 @@ const sketch = (p: p5) => {
       }
     }
     for (let i = platformManager.platforms.length - 1; i >= 0; i--) {
-        if (platformManager.platforms[i].isOffscreen()) {
-            platformManager.platforms.splice(i, 1);
-        }
+      if (platformManager.platforms[i].isOffscreen()) {
+        platformManager.platforms.splice(i, 1);
+      }
     }
-
 
     // --- DRAWING ---
     if (images.background) {
@@ -716,8 +981,8 @@ const sketch = (p: p5) => {
       const bgWidth = images.background.width;
       // 스크롤 속도를 조절하려면 world.worldX에 계수를 곱합니다. (예: * 0.5)
       const parallaxX = world.worldX * 0.5;
-      const startX = - (parallaxX % bgWidth);
-      
+      const startX = -(parallaxX % bgWidth);
+
       for (let x = startX; x < p.width; x += bgWidth) {
         p.image(images.background, x, 0, bgWidth, p.height);
       }
@@ -726,9 +991,10 @@ const sketch = (p: p5) => {
     }
 
     // --- BOSS (교수님) UPDATE ---
-    const healthPercent = healthManager.getCurrentHealth() / healthManager.getMaxHealth();
+    const healthPercent =
+      healthManager.getCurrentHealth() / healthManager.getMaxHealth();
     const playerX = 100; // 플레이어 고정 X 위치
-    
+
     if (healthPercent <= 0.25) {
       // 체력 25% 이하: 교수님이 바로 뒤로 쫓아옴
       bossVisible = true;
@@ -755,14 +1021,14 @@ const sketch = (p: p5) => {
       const bossWidth = 240;
       const bossHeight = 120;
       const bossY = p.height * 0.75 - bossHeight; // 바닥 위
-      
+
       let bossImage: p5.Image | null = null;
       if (healthPercent <= 0.25) {
         bossImage = images.bossRun; // 달리기 이미지
       } else {
         bossImage = images.boss; // 기본 이미지
       }
-      
+
       if (bossImage) {
         p.image(bossImage, bossX, bossY, bossWidth, bossHeight);
       }
@@ -780,7 +1046,7 @@ const sketch = (p: p5) => {
     const flagWidth = flagData.width || 150;
     const flagHeight = flagData.height || 200;
     const flagY = p.height * 0.75 - flagHeight; // 바닥 위
-    
+
     // 깃발이 화면 안에 있을 때만 그리기
     if (flagX < p.width + flagWidth && flagX > -flagWidth) {
       if (images.endingPoint) {
@@ -798,13 +1064,13 @@ const sketch = (p: p5) => {
     const hitboxWidth = flagWidth * hitboxScale;
     const hitboxHeight = flagHeight * hitboxScale;
     const flagHitbox = {
-      x: flagX + (flagWidth - hitboxWidth) / 2,  // 중앙 정렬
+      x: flagX + (flagWidth - hitboxWidth) / 2, // 중앙 정렬
       y: flagY + (flagHeight - hitboxHeight) / 2,
       width: hitboxWidth,
-      height: hitboxHeight
+      height: hitboxHeight,
     };
-    
-    const collidesWithFlag = 
+
+    const collidesWithFlag =
       playerHitbox.x < flagHitbox.x + flagHitbox.width &&
       playerHitbox.x + playerHitbox.width > flagHitbox.x &&
       playerHitbox.y < flagHitbox.y + flagHitbox.height &&
@@ -818,14 +1084,14 @@ const sketch = (p: p5) => {
       const volume = getMicVolume();
       const maxVolume = 255;
       const volumeBarWidth = (volume / maxVolume) * 150;
-      
+
       p.push();
       p.noStroke();
-      
+
       // 배경
       p.fill(50, 50, 50, 150);
       p.rect(p.width - 170, 20, 150, 20, 5);
-      
+
       // 볼륨 바 (임계값 초과 시 색상 변경)
       if (volume > MIC_THRESHOLD) {
         p.fill(255, 200, 0); // 노란색 (파워업 활성화)
@@ -833,13 +1099,13 @@ const sketch = (p: p5) => {
         p.fill(100, 200, 100); // 초록색
       }
       p.rect(p.width - 170, 20, volumeBarWidth, 20, 5);
-      
+
       // 임계값 선
       const thresholdX = p.width - 170 + (MIC_THRESHOLD / maxVolume) * 150;
       p.stroke(255, 0, 0);
       p.strokeWeight(2);
       p.line(thresholdX, 18, thresholdX, 42);
-      
+
       // 마이크 아이콘/텍스트
       p.noStroke();
       p.fill(255);
@@ -867,6 +1133,7 @@ const sketch = (p: p5) => {
       if (p.keyCode === 38) {
         player.jump();
       } else if (p.keyCode === 40) {
+        isDownKeyPressed = true;
         player.startSlide();
       }
     }
@@ -875,21 +1142,26 @@ const sketch = (p: p5) => {
   p.keyReleased = () => {
     if (currentScreen === "playing") {
       if (p.keyCode === 40) {
+        isDownKeyPressed = false;
         player.endSlide();
       }
     }
   };
 
   p.mousePressed = () => {
-    buttons.forEach(button => {
-      if (p.mouseX > button.x && p.mouseX < button.x + button.width &&
-          p.mouseY > button.y && p.mouseY < button.y + button.height) {
+    buttons.forEach((button) => {
+      if (
+        p.mouseX > button.x &&
+        p.mouseX < button.x + button.width &&
+        p.mouseY > button.y &&
+        p.mouseY < button.y + button.height
+      ) {
         button.action();
       }
     });
   };
 };
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("DOMContentLoaded", () => {
   new p5(sketch);
 });
