@@ -42,6 +42,7 @@ interface ImageMap {
   btnHome: p5.Image | null;
   btnRetry: p5.Image | null;
   endingPoint: p5.Image | null;
+  endingCredit: p5.Image | null;
 }
 
 let images: ImageMap;
@@ -127,7 +128,7 @@ function playGameOverSequence() {
   currentBgm = sounds.bgmOver1;
 }
 
-type GameScreen = "start" | "help" | "playing" | "won" | "lost";
+type GameScreen = "start" | "help" | "playing" | "credit" | "won" | "lost";
 
 const sketch = (p: p5) => {
   let currentScreen: GameScreen = "start";
@@ -173,6 +174,10 @@ const sketch = (p: p5) => {
 
   // Input state (입력 상태 추적)
   let isDownKeyPressed = false;
+
+  // Credit screen state (크레딧 화면)
+  let creditStartTime = 0;
+  const CREDIT_DURATION = 5000; // 5초
 
   function resetGame() {
     // Player 생성: (p5, 일반이미지, 거대화이미지, 슬라이드이미지, 너비, 높이, 히트박스스케일)
@@ -311,8 +316,8 @@ const sketch = (p: p5) => {
 
     buttons = [
       createButton(
-        p.width / 2 - 240,
-        p.height - 120,
+        p.width / 2 + 90,
+        p.height - 300,
         200,
         60,
         "게임 시작",
@@ -327,8 +332,8 @@ const sketch = (p: p5) => {
         images.btnStart
       ),
       createButton(
-        p.width / 2 + 60,
-        p.height - 120,
+        p.width / 2 + 90,
+        p.height - 240,
         200,
         60,
         "도움말",
@@ -355,7 +360,7 @@ const sketch = (p: p5) => {
     buttons = [
       createButton(
         p.width / 2 - 100,
-        p.height - 110,
+        p.height - 240,
         200,
         60,
         "돌아가기",
@@ -477,6 +482,32 @@ const sketch = (p: p5) => {
     buttons.forEach(drawButton);
   }
 
+  function showCreditScreen() {
+    p.background(26, 26, 46); // #1a1a2e
+
+    // 크레딧 이미지 표시
+    if (images.endingCredit) {
+      const imgWidth = 800;
+      const imgHeight =
+        (imgWidth / images.endingCredit.width) * images.endingCredit.height;
+      p.image(
+        images.endingCredit,
+        p.width / 2 - imgWidth / 2,
+        (p.height - imgHeight) / 2,
+        imgWidth,
+        imgHeight
+      );
+    }
+
+    // 5초 후 승리 화면으로 전환
+    if (p.millis() - creditStartTime >= CREDIT_DURATION) {
+      currentScreen = "won";
+    }
+
+    // 버튼 없음 (자동 전환)
+    buttons = [];
+  }
+
   p.setup = () => {
     p.createCanvas(800, 600);
 
@@ -501,6 +532,7 @@ const sketch = (p: p5) => {
       btnHome: null,
       btnRetry: null,
       endingPoint: null,
+      endingCredit: null,
     }; // 초기화
 
     // ===== 오디오 파일 로드 =====
@@ -515,7 +547,7 @@ const sketch = (p: p5) => {
     sounds.sfxObstacle = loadSound(`${ASSET_PATH}/obstacle_attack.wav`);
 
     let loadedCount = 0;
-    const totalImages = 25; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1
+    const totalImages = 26; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1 + 크레딧 1
 
     const checkAllLoaded = () => {
       loadedCount++;
@@ -527,7 +559,7 @@ const sketch = (p: p5) => {
 
     // 배경 이미지 로드
     p.loadImage(
-      `${ASSET_PATH}/background.png`,
+      `${ASSET_PATH}/background.jpeg`,
       (img) => {
         images.background = img;
         checkAllLoaded();
@@ -818,6 +850,19 @@ const sketch = (p: p5) => {
         checkAllLoaded();
       }
     );
+
+    p.loadImage(
+      `${ASSET_PATH}/ending_credit.png`,
+      (img) => {
+        images.endingCredit = img;
+        console.log(`ending_credit size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load ending_credit image:", event);
+        checkAllLoaded();
+      }
+    );
   };
 
   function drawHealthBar() {
@@ -865,9 +910,14 @@ const sketch = (p: p5) => {
       } else if (currentScreen === "playing") {
         // 게임 플레이: game.mp3
         playBgm(sounds.bgmGame, true);
-      } else if (currentScreen === "won") {
-        // 승리: ending_win.mp3
+      } else if (currentScreen === "credit") {
+        // 크레딧 화면: 승리 음악 미리 재생
         playBgm(sounds.bgmWin, true);
+      } else if (currentScreen === "won") {
+        // 승리 화면: 이미 credit에서 재생 중이면 유지
+        if (lastScreen !== "credit") {
+          playBgm(sounds.bgmWin, true);
+        }
       } else if (currentScreen === "lost") {
         // 패배: ending_over_1.mp3 -> ending_over_2.mp3 순차 재생
         playGameOverSequence();
@@ -882,6 +932,10 @@ const sketch = (p: p5) => {
     }
     if (currentScreen === "help") {
       showHelpScreen();
+      return;
+    }
+    if (currentScreen === "credit") {
+      showCreditScreen();
       return;
     }
     if (currentScreen === "won") {
@@ -1232,7 +1286,8 @@ const sketch = (p: p5) => {
 
     // --- STATE CHECKS ---
     if (collidesWithFlag) {
-      currentScreen = "won";
+      currentScreen = "credit";
+      creditStartTime = p.millis();
     }
     if (player.isDead()) {
       currentScreen = "lost";
