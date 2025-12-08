@@ -95,15 +95,6 @@ export class Obstacle implements Collidable {
     // p.strokeWeight(1);
     // p.rect(this.x, this.y, this.displayWidth, this.displayHeight);
     // p.pop();
-
-    // Draw coordinates text for testing
-    p.push();
-    p.fill(255);
-    p.textSize(20);
-    p.textAlign(p.LEFT, p.TOP);
-    const coordText2 = `${this.worldX}`;
-    p.text(coordText2, this.x, this.y - 15);
-    p.pop();
   }
 
   isOffscreen(): boolean {
