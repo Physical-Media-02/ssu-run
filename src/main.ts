@@ -43,6 +43,8 @@ interface ImageMap {
   btnRetry: p5.Image | null;
   endingPoint: p5.Image | null;
   endingCredit: p5.Image | null;
+  logoWhite: p5.Image | null;
+  logoBlack: p5.Image | null;
 }
 
 let images: ImageMap;
@@ -372,6 +374,9 @@ const sketch = (p: p5) => {
     ];
 
     buttons.forEach(drawButton);
+    
+    // 로고 추가 (좌측 상단)
+    drawLogo(images.logoWhite, "topLeft");
   }
 
   function showWinScreen() {
@@ -426,6 +431,9 @@ const sketch = (p: p5) => {
     ];
 
     buttons.forEach(drawButton);
+    
+    // 로고 추가 (좌측 상단)
+    drawLogo(images.logoWhite, "topLeft");
   }
 
   function showLostScreen() {
@@ -480,6 +488,9 @@ const sketch = (p: p5) => {
     ];
 
     buttons.forEach(drawButton);
+    
+    // 로고 추가 (좌측 상단)
+    drawLogo(images.logoWhite, "topLeft");
   }
 
   function showCreditScreen() {
@@ -533,6 +544,8 @@ const sketch = (p: p5) => {
       btnRetry: null,
       endingPoint: null,
       endingCredit: null,
+      logoWhite: null,
+      logoBlack: null,
     }; // 초기화
 
     // ===== 오디오 파일 로드 =====
@@ -547,7 +560,7 @@ const sketch = (p: p5) => {
     sounds.sfxObstacle = loadSound(`${ASSET_PATH}/obstacle_attack.wav`);
 
     let loadedCount = 0;
-    const totalImages = 26; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1 + 크레딧 1
+    const totalImages = 28; // 배경 1 + 하단 장애물 4 + 상단 장애물 3 + 파워업 1 + 체력 1 + 캐릭터 3 + 엔딩 2 + 메인 1 + 도움말 1 + 보스 2 + 버튼 5 + 깃발 1 + 크레딧 1 + 로고 2
 
     const checkAllLoaded = () => {
       loadedCount++;
@@ -863,7 +876,53 @@ const sketch = (p: p5) => {
         checkAllLoaded();
       }
     );
+
+    p.loadImage(
+      `${ASSET_PATH}/logo_white.png`,
+      (img) => {
+        images.logoWhite = img;
+        console.log(`logo_white size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load logo_white image:", event);
+        checkAllLoaded();
+      }
+    );
+
+    p.loadImage(
+      `${ASSET_PATH}/logo_black.png`,
+      (img) => {
+        images.logoBlack = img;
+        console.log(`logo_black size: ${img.width}x${img.height}`);
+        checkAllLoaded();
+      },
+      (event) => {
+        console.error("Failed to load logo_black image:", event);
+        checkAllLoaded();
+      }
+    );
   };
+
+  // 로고 그리기 함수
+  function drawLogo(logo: p5.Image | null, position: "topLeft" | "topRight") {
+    if (!logo) return;
+    
+    const logoWidth = 150; // 로고 너비
+    const logoHeight = (logoWidth / logo.width) * logo.height;
+    const margin = 50; // 여백
+    
+    let x: number;
+    if (position === "topLeft") {
+      x = margin;
+    } else {
+      x = p.width - logoWidth - margin + 20;
+    }
+    
+    p.push();
+    p.image(logo, x, margin, logoWidth, logoHeight);
+    p.pop();
+  }
 
   function drawHealthBar() {
     const health = healthManager.getCurrentHealth();
@@ -1247,6 +1306,9 @@ const sketch = (p: p5) => {
 
     drawScoreUI(p, scoreManager);
     drawHealthBar();
+    
+    // 로고 추가 (우측 상단)
+    drawLogo(images.logoBlack, "topRight");
 
     // --- MICROPHONE VOLUME BAR (마이크 볼륨 표시) ---
     if (micEnabled) {
