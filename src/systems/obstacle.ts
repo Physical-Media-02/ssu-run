@@ -1,16 +1,30 @@
 import p5 from "p5";
 import { Collidable } from "./collidable";
 
+/**
+ * 장애물 클래스
+ * 플레이어가 피해야 할 장애물을 표현
+ */
 export class Obstacle implements Collidable {
-  worldX: number; // Position in the world
-  x: number; // Position on the screen, updated each frame
-  y: number;
-  width: number; // 충돌 박스 크기
-  height: number; // 충돌 박스 크기
-  private displayWidth: number;
-  private displayHeight: number;
-  private image: p5.Image | null;
+  worldX: number; // 월드 좌표계에서의 X 위치
+  x: number; // 화면상 X 좌표 (매 프레임 업데이트)
+  y: number; // Y 좌표
+  width: number; // 충돌 박스 너비
+  height: number; // 충돌 박스 높이
+  private displayWidth: number; // 화면에 표시되는 너비
+  private displayHeight: number; // 화면에 표시되는 높이
+  private image: p5.Image | null; // 장애물 이미지
 
+  /**
+   * 장애물 생성자
+   * @param p - p5 인스턴스
+   * @param worldX - 월드 좌표 X
+   * @param y - Y 좌표 (기본값: 지면 위)
+   * @param displayWidth - 표시 너비
+   * @param displayHeight - 표시 높이
+   * @param image - 장애물 이미지
+   * @param hitboxScale - 충돌 박스 비율 (기본값: 0.6)
+   */
   constructor(
     p: p5,
     worldX: number,
@@ -35,7 +49,10 @@ export class Obstacle implements Collidable {
     this.x = 0; // Initial screen position, will be updated
   }
 
-  // 충돌 감지를 위한 실제 히트박스 좌표 (중앙에 배치)
+  /**
+   * 충돌 감지용 히트박스 좌표 반환
+   * 표시 크기보다 작은 충돌 박스를 중앙에 배치
+   */
   getHitbox() {
     return {
       x: this.x + (this.displayWidth - this.width) / 2,
@@ -45,7 +62,10 @@ export class Obstacle implements Collidable {
     };
   }
 
-  // Update the screen position based on the world scroll
+  /**
+   * 월드 스크롤에 따라 화면상 위치 업데이트
+   * @param worldScrollX - 월드 스크롤 X 좌표
+   */
   update(worldScrollX: number) {
     this.x = this.worldX - worldScrollX;
   }
